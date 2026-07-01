@@ -1,0 +1,3163 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>GESTORFISCAL — Triagem e Precificação Tributária 2026</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = { darkMode:'class', theme:{ extend:{ colors:{ navy:{ 900:'#0f172a', 950:'#020617' } } } } };
+if (localStorage.getItem('gf_theme') === 'light') document.documentElement.classList.remove('dark');
+else document.documentElement.classList.add('dark');
+</script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+<style>
+* { font-family:'Plus Jakarta Sans',sans-serif; -webkit-tap-highlight-color:transparent; }
+.tab-container { perspective:1500px; position:relative; }
+.tab-pane { transition:transform 0.45s cubic-bezier(0.25,1,0.5,1), opacity 0.35s ease-out; transform-style:preserve-3d; backface-visibility:hidden; width:100%; }
+.tab-pane.active { opacity:1; transform:translate3d(0,0,0) rotateY(0deg); pointer-events:auto; position:relative; z-index:10; }
+.tab-pane.left  { opacity:0; transform:translate3d(-100%,0,-150px) rotateY(20deg);  pointer-events:none; position:absolute; top:0; left:0; z-index:1; height:0; overflow:hidden; }
+.tab-pane.right { opacity:0; transform:translate3d(100%,0,-150px) rotateY(-20deg); pointer-events:none; position:absolute; top:0; left:0; z-index:1; height:0; overflow:hidden; }
+::-webkit-scrollbar { width:5px; height:5px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:#10b981; border-radius:4px; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);} }
+.anim-up { animation:fadeUp 0.4s cubic-bezier(0.16,1,0.3,1) forwards; }
+@keyframes shimmer { 0%,100%{opacity:1;}50%{opacity:.5;} }
+.pulse-dot { animation:shimmer 2s infinite; }
+@keyframes spin { to{transform:rotate(360deg);} }
+.spinner { animation:spin 0.8s linear infinite; }
+@keyframes slideIn { from{transform:translateX(100%);opacity:0;}to{transform:translateX(0);opacity:1;} }
+@keyframes slideOut { from{transform:translateX(0);opacity:1;}to{transform:translateX(100%);opacity:0;} }
+input[type=range] { accent-color:#10b981; }
+@media print {
+  html,body { background:white!important; color:black!important; height:auto!important; }
+  body { padding:0!important; margin:0!important; display:block!important; }
+  main,header,nav,#toast-container,#login-screen,.no-print,#modal-pos-cadastro { display:none!important; }
+  #print-document, #print-pos-cadastro { display:block!important; }
+  body.print-mode-cadastro #print-document { display:none!important; }
+  body.print-mode-relatorio #print-pos-cadastro { display:none!important; }
+  #print-document *, #print-pos-cadastro * { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+}
+.tooltip-wrap { position:relative; }
+.tooltip-box { opacity:0; visibility:hidden; transform:translateX(-50%) translateY(8px); transition:all 0.2s ease; position:absolute; left:50%; bottom:110%; width:220px; z-index:50; pointer-events:none; }
+.tooltip-wrap:hover .tooltip-box { opacity:1; visibility:visible; transform:translateX(-50%) translateY(0); }
+/* Step indicator */
+.step-dot { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; transition:all 0.3s; }
+.step-dot.done { background:#10b981; color:white; }
+.step-dot.active { background:#10b981; color:white; box-shadow:0 0 0 4px rgba(16,185,129,0.2); }
+.step-dot.pending { background:transparent; border:2px solid #334155; color:#64748b; }
+.step-line { flex:1; height:2px; background:#334155; position:relative; }
+.step-line.done { background:#10b981; }
+/* Regime cards */
+.regime-card { border:2px solid transparent; border-radius:12px; padding:12px; cursor:pointer; transition:all 0.2s; background:rgba(255,255,255,0.04); }
+.regime-card:hover { border-color:#10b981; background:rgba(16,185,129,0.06); }
+.regime-card.selected { border-color:#10b981; background:rgba(16,185,129,0.12); }
+/* Demo banner */
+@keyframes demoPulse { 0%,100%{opacity:1;}50%{opacity:0.7;} }
+.demo-banner { animation:demoPulse 2s ease-in-out infinite; }
+/* Row hover */
+.product-row:hover { background:rgba(16,185,129,0.04); }
+/* Plano card */
+.plano-card { border:2px solid rgba(16,185,129,0.3); border-radius:20px; background:rgba(16,185,129,0.05); transition:all .25s; }
+.plano-card:hover { border-color:#10b981; background:rgba(16,185,129,0.1); transform:translateY(-2px); box-shadow:0 8px 32px rgba(16,185,129,0.15); }
+/* Pulse ring */
+@keyframes pulseRing { 0%{transform:scale(1);opacity:.6;}100%{transform:scale(1.8);opacity:0;} }
+.pulse-ring::before { content:''; position:absolute; inset:0; border-radius:50%; background:rgba(16,185,129,0.4); animation:pulseRing 1.8s ease-out infinite; }
+/* Admin badge */
+.admin-badge { background:linear-gradient(135deg,#7c3aed,#4f46e5); }
+/* Pending dots */
+@keyframes pendingBounce { 0%,80%,100%{transform:translateY(0);}40%{transform:translateY(-8px);} }
+.pending-dot:nth-child(1){animation:pendingBounce 1.4s ease-in-out infinite}
+.pending-dot:nth-child(2){animation:pendingBounce 1.4s ease-in-out .2s infinite}
+.pending-dot:nth-child(3){animation:pendingBounce 1.4s ease-in-out .4s infinite}
+/* Settings sub-tabs */
+.active-cfg-tab { background:white; color:#065f46; box-shadow:0 1px 4px rgba(0,0,0,0.08); }
+.dark .active-cfg-tab { background:#1e293b; color:#34d399; }
+/* Despesas inputs */
+.desp-label { display:block; font-size:9px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px; }
+.desp-input { width:100%; padding:6px 10px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; font-size:12px; outline:none; transition:all .2s; }
+.dark .desp-input { background:#020617; border-color:#334155; color:#f1f5f9; }
+.desp-input:focus { border-color:#10b981; box-shadow:0 0 0 2px rgba(16,185,129,0.15); }
+/* Product sidebar */
+.prod-sidebar-item { padding:10px 12px; border-radius:10px; cursor:pointer; transition:all .15s; border:1px solid transparent; }
+.prod-sidebar-item:hover { background:rgba(16,185,129,0.05); border-color:rgba(16,185,129,0.2); }
+.prod-sidebar-item.selected { background:rgba(16,185,129,0.1); border-color:#10b981; }
+@media print {
+  #modal-pos-cadastro, #print-pos-cadastro ~ * { }
+  #print-pos-cadastro { display:block!important; }
+}
+</style>
+</head>
+<body class="bg-slate-50 text-slate-800 dark:bg-[#020617] dark:text-slate-100 min-h-screen flex flex-col overflow-x-hidden transition-colors duration-200">
+
+<!-- TOAST -->
+<div id="toast-container" class="fixed top-5 right-5 z-[200] flex flex-col gap-2 no-print" style="max-width:340px;"></div>
+
+<!-- PRINT DOC -->
+<div id="print-document" style="display:none;" class="p-8 text-black font-sans">
+  <div style="border-bottom:2px solid #000;padding-bottom:16px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:flex-end;">
+    <div>
+      <div style="font-size:22px;font-weight:900;letter-spacing:-0.03em;text-transform:uppercase;">GESTORFISCAL</div>
+      <div style="font-size:11px;color:#475569;margin-top:3px;">Relatório de Triagem e Precificação Tributária</div>
+    </div>
+    <div style="text-align:right;font-size:10px;color:#475569;">
+      <div><strong>Vigência:</strong> 2026</div>
+      <div id="pr-date" style="margin-top:2px;"></div>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:10px;background:#f8fafc;border-radius:6px;margin-bottom:16px;font-size:10px;border:1px solid #e2e8f0;">
+    <div><strong style="text-transform:uppercase;font-size:9px;letter-spacing:.05em;">Empresa</strong><br><span id="pr-empresa">—</span></div>
+    <div><strong style="text-transform:uppercase;font-size:9px;letter-spacing:.05em;">Regime Tributário</strong><br><span id="pr-regime">—</span></div>
+    <div><strong style="text-transform:uppercase;font-size:9px;letter-spacing:.05em;">Arquivo XML</strong><br><span id="pr-arquivo">—</span></div>
+    <div><strong style="text-transform:uppercase;font-size:9px;letter-spacing:.05em;">Margem Padrão</strong><br><span id="pr-margem">—</span></div>
+  </div>
+  <table id="pr-table" style="width:100%;border-collapse:collapse;font-size:10px;">
+    <thead>
+      <tr style="background:#f1f5f9;">
+        <th style="border:1px solid #000;padding:7px 8px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.05em;">Produto / Descrição</th>
+        <th style="border:1px solid #000;padding:7px 8px;">NCM</th>
+        <th style="border:1px solid #000;padding:7px 8px;">Valor de Compra</th>
+        <th style="border:1px solid #000;padding:7px 8px;">Valor de Custo</th>
+        <th style="border:1px solid #000;padding:7px 8px;">Margem%</th>
+        <th style="border:1px solid #000;padding:7px 8px;font-weight:900;background:#f0fdf4;">Preço Sugerido</th>
+        <th style="border:1px solid #000;padding:7px 8px;border-left:2px dashed #000;font-size:9px;">Ajuste Manual</th>
+      </tr>
+    </thead>
+    <tbody id="pr-body"></tbody>
+  </table>
+  <div style="margin-top:20px;padding-top:12px;border-top:1px dashed #cbd5e1;font-size:9px;color:#64748b;display:flex;justify-content:space-between;">
+    <span>GESTORFISCAL © 2026 — Documento gerado automaticamente. Não substitui assessoria fiscal.</span>
+    <span id="pr-total"></span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     TELA DE LOGIN / CADASTRO MULTI-STEP
+══════════════════════════════════════════════ -->
+<div id="login-screen" class="fixed inset-0 z-40 flex items-center justify-center bg-slate-100 dark:bg-[#020617] px-4 no-print overflow-y-auto py-8">
+  <div class="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-3xl p-8 max-w-md w-full shadow-2xl relative overflow-hidden anim-up">
+    <div class="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-700"></div>
+
+    <!-- Logo -->
+    <div class="flex flex-col items-center mb-6">
+      <div class="w-14 h-14 bg-emerald-100 dark:bg-emerald-950/60 rounded-2xl flex items-center justify-center mb-3 border border-emerald-200 dark:border-emerald-800 shadow-md">
+        <i data-lucide="landmark" class="w-7 h-7 text-emerald-600 dark:text-emerald-400"></i>
+      </div>
+      <h1 class="text-2xl font-extrabold tracking-tight">GESTOR<span class="text-emerald-600 dark:text-emerald-400">FISCAL</span></h1>
+      <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Triagem e Precificação Tributária · 2026</p>
+    </div>
+
+    <!-- Auth mode tabs -->
+    <div id="auth-tabs" class="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl mb-6 gap-1">
+      <button onclick="setAuthMode('login')" id="tab-login-btn" class="flex-1 py-2 text-xs font-bold rounded-lg bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm transition-all">Entrar</button>
+      <button onclick="setAuthMode('signup')" id="tab-signup-btn" class="flex-1 py-2 text-xs font-bold rounded-lg text-slate-500 dark:text-slate-400 transition-all">Criar Conta</button>
+    </div>
+
+    <!-- ── LOGIN PANEL ── -->
+    <div id="panel-login" class="space-y-4">
+      <div>
+        <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">E-mail</label>
+        <div class="relative">
+          <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="mail" class="w-4 h-4"></i></span>
+          <input type="email" id="login-email" autocomplete="email" class="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all" placeholder="seuemail@empresa.com">
+        </div>
+      </div>
+      <div>
+        <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Senha</label>
+        <div class="relative">
+          <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="lock" class="w-4 h-4"></i></span>
+          <input type="password" id="login-password" autocomplete="current-password" class="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all" placeholder="••••••••">
+        </div>
+      </div>
+      <button onclick="doLogin()" id="btn-login" class="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/30">
+        <i data-lucide="log-in" class="w-4 h-4" id="icon-login"></i>
+        <span id="label-login">Entrar</span>
+      </button>
+      <div class="text-center">
+        <button onclick="setAuthMode('recover')" class="text-xs text-emerald-500 hover:text-emerald-400 font-semibold transition-colors">Esqueci minha senha</button>
+      </div>
+      <div class="relative flex items-center gap-3 py-1">
+        <div class="flex-1 h-px bg-slate-200 dark:bg-slate-800"></div>
+        <span class="text-[10px] text-slate-400 font-semibold">OU</span>
+        <div class="flex-1 h-px bg-slate-200 dark:bg-slate-800"></div>
+      </div>
+      <button onclick="doDemo()" id="btn-demo" class="w-full py-3 rounded-xl bg-slate-800 hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 text-white font-bold text-sm transition-all flex items-center justify-center gap-2 border border-slate-600">
+        <i data-lucide="play-circle" class="w-4 h-4"></i>
+        <span>Experimentar Demo Gratuito</span>
+      </button>
+    </div>
+
+    <!-- ── RECUPERAR SENHA ── -->
+    <div id="panel-recover" class="hidden space-y-4">
+      <div class="text-center mb-2">
+        <div class="w-12 h-12 rounded-2xl bg-blue-100 dark:bg-blue-950/40 flex items-center justify-center mx-auto mb-3">
+          <i data-lucide="key-round" class="w-6 h-6 text-blue-500"></i>
+        </div>
+        <h3 class="text-sm font-extrabold text-slate-800 dark:text-white">Recuperar senha</h3>
+        <p class="text-xs text-slate-400 mt-1">Digite seu e-mail e enviaremos um link para redefinir.</p>
+      </div>
+      <div>
+        <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">E-mail</label>
+        <div class="relative">
+          <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="mail" class="w-4 h-4"></i></span>
+          <input type="email" id="recover-email" autocomplete="email" placeholder="seuemail@empresa.com"
+            class="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+        </div>
+      </div>
+      <button onclick="doSendRecovery()" id="btn-recover" class="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm transition-all flex items-center justify-center gap-2">
+        <i data-lucide="send" class="w-4 h-4" id="icon-recover"></i>
+        <span id="label-recover">Enviar link de recuperação</span>
+      </button>
+      <div class="text-center">
+        <button onclick="setAuthMode('login')" class="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-semibold transition-colors flex items-center gap-1 mx-auto">
+          <i data-lucide="arrow-left" class="w-3 h-3"></i> Voltar para o login
+        </button>
+      </div>
+    </div>
+
+    <!-- ── CADASTRO MULTI-STEP ── -->
+    <div id="panel-signup" class="hidden">
+      <!-- Progress steps -->
+      <div class="flex items-center mb-6" id="step-indicator">
+        <div class="step-dot active" id="sdot-1">1</div>
+        <div class="step-line" id="sline-1"></div>
+        <div class="step-dot pending" id="sdot-2">2</div>
+        <div class="step-line" id="sline-2"></div>
+        <div class="step-dot pending" id="sdot-3">3</div>
+      </div>
+      <p class="text-[10px] text-slate-400 uppercase tracking-wider font-bold mb-4" id="step-label">Passo 1 de 3 — Seus dados de acesso</p>
+
+      <!-- STEP 1: credenciais -->
+      <div id="step-1" class="space-y-4">
+        <div>
+          <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Nome Completo</label>
+          <div class="relative"><span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i data-lucide="user" class="w-4 h-4"></i></span>
+          <input type="text" id="s1-name" class="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="João Silva"></div>
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">E-mail</label>
+          <div class="relative"><span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i data-lucide="mail" class="w-4 h-4"></i></span>
+          <input type="email" id="s1-email" class="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="seuemail@empresa.com"></div>
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">WhatsApp (com DDD)</label>
+          <div class="relative"><span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i data-lucide="phone" class="w-4 h-4"></i></span>
+          <input type="tel" id="s1-telefone" maxlength="16" oninput="maskPhone(this)" class="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="(11) 99999-9999"></div>
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Senha (mín. 6 caracteres)</label>
+          <div class="relative"><span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i data-lucide="lock" class="w-4 h-4"></i></span>
+          <input type="password" id="s1-password" class="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="••••••••"></div>
+        </div>
+        <button onclick="goStep(2)" class="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition-all flex items-center justify-center gap-2">
+          Continuar <i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- STEP 2: empresa -->
+      <div id="step-2" class="hidden space-y-4">
+        <div>
+          <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Razão Social / Nome Fantasia</label>
+          <div class="relative"><span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i data-lucide="building-2" class="w-4 h-4"></i></span>
+          <input type="text" id="s2-empresa" class="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Minha Empresa Ltda"></div>
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">CNPJ (opcional)</label>
+          <div class="relative"><span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i data-lucide="file-text" class="w-4 h-4"></i></span>
+          <input type="text" id="s2-cnpj" maxlength="18" oninput="maskCNPJ(this)" class="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="00.000.000/0001-00"></div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">UF</label>
+            <select id="s2-uf" class="w-full px-3 py-3 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+              <option value="">UF</option>
+              <option>AC</option><option>AL</option><option>AM</option><option>AP</option><option>BA</option>
+              <option>CE</option><option>DF</option><option>ES</option><option>GO</option><option>MA</option>
+              <option>MG</option><option>MS</option><option>MT</option><option>PA</option><option>PB</option>
+              <option>PE</option><option>PI</option><option>PR</option><option>RJ</option><option>RN</option>
+              <option>RO</option><option>RR</option><option>RS</option><option>SC</option><option>SE</option>
+              <option selected>SP</option><option>TO</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Cidade</label>
+            <input type="text" id="s2-cidade" class="w-full px-3 py-3 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="São Paulo">
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <button onclick="goStep(1)" class="flex-1 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-sm transition-all flex items-center justify-center gap-2">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i> Voltar
+          </button>
+          <button onclick="goStep(3)" class="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition-all flex items-center justify-center gap-2">
+            Continuar <i data-lucide="arrow-right" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- STEP 3: regime tributário -->
+      <div id="step-3" class="hidden space-y-3">
+        <p class="text-xs text-slate-500 dark:text-slate-400">Selecione o regime tributário da sua empresa:</p>
+        <div onclick="selectRegime('MEI')" id="card-MEI" class="regime-card">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400"><i data-lucide="user-check" class="w-5 h-5"></i></div>
+            <div><div class="text-sm font-bold text-slate-800 dark:text-white">MEI</div><div class="text-[10px] text-slate-500">Microempreendedor Individual · DAS fixo mensal</div></div>
+          </div>
+        </div>
+        <div onclick="selectRegime('SN')" id="card-SN" class="regime-card">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400"><i data-lucide="layers" class="w-5 h-5"></i></div>
+            <div><div class="text-sm font-bold text-slate-800 dark:text-white">Simples Nacional</div><div class="text-[10px] text-slate-500">Tabelas progressivas Anexo I–V · RBT12</div></div>
+          </div>
+          <!-- SN extras -->
+          <div id="sn-extras" class="hidden mt-3 grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Anexo</label>
+              <select id="sn-anexo" class="w-full px-2 py-2 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500" onclick="event.stopPropagation()">
+                <option value="I">Anexo I (Comércio)</option>
+                <option value="II">Anexo II (Indústria)</option>
+                <option value="III">Anexo III (Serv. 1)</option>
+                <option value="IV">Anexo IV (Serv. 2)</option>
+                <option value="V">Anexo V (Serv. 3)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">RBT12 (R$)</label>
+              <input type="number" id="sn-rba" placeholder="360000" onclick="event.stopPropagation()" class="w-full px-2 py-2 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            </div>
+          </div>
+        </div>
+        <div onclick="selectRegime('LP')" id="card-LP" class="regime-card">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-400"><i data-lucide="bar-chart-2" class="w-5 h-5"></i></div>
+            <div><div class="text-sm font-bold text-slate-800 dark:text-white">Lucro Presumido</div><div class="text-[10px] text-slate-500">PIS 0,65% · COFINS 3% · ICMS 17% · ~22,93% total</div></div>
+          </div>
+        </div>
+        <div onclick="selectRegime('LR')" id="card-LR" class="regime-card">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-400"><i data-lucide="calculator" class="w-5 h-5"></i></div>
+            <div><div class="text-sm font-bold text-slate-800 dark:text-white">Lucro Real</div><div class="text-[10px] text-slate-500">PIS 1,65% · COFINS 7,6% com créditos · ICMS 17%</div></div>
+          </div>
+        </div>
+        <div class="flex gap-2 pt-2">
+          <button onclick="goStep(2)" class="flex-1 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-sm transition-all flex items-center justify-center gap-2">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i> Voltar
+          </button>
+          <button onclick="doSignup()" id="btn-signup" class="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition-all flex items-center justify-center gap-2">
+            <i data-lucide="check-circle" class="w-4 h-4" id="icon-signup"></i>
+            <span id="label-signup">Criar Conta</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PÓS-CADASTRO -->
+<div id="modal-pos-cadastro" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 no-print">
+  <div class="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-3xl p-8 max-w-sm w-full shadow-2xl anim-up">
+    <div class="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-700 rounded-t-3xl"></div>
+    <div class="flex flex-col items-center text-center mb-6">
+      <div class="w-16 h-16 bg-emerald-100 dark:bg-emerald-950/60 rounded-2xl flex items-center justify-center mb-3 border border-emerald-200 dark:border-emerald-800">
+        <i data-lucide="party-popper" class="w-8 h-8 text-emerald-500"></i>
+      </div>
+      <h2 class="text-xl font-extrabold tracking-tight">Conta criada com sucesso!</h2>
+      <p class="text-xs text-slate-500 dark:text-slate-400 mt-1.5" id="modal-boas-vindas">Bem-vindo ao GESTORFISCAL.</p>
+    </div>
+    <div id="modal-resumo" class="bg-slate-50 dark:bg-slate-900 rounded-xl p-4 text-xs space-y-2 mb-5 border border-slate-200 dark:border-slate-700">
+      <div class="flex justify-between"><span class="text-slate-400">Empresa</span><span class="font-bold text-slate-700 dark:text-slate-200" id="mc-empresa">—</span></div>
+      <div class="flex justify-between"><span class="text-slate-400">Regime</span><span class="font-bold text-emerald-600 dark:text-emerald-400" id="mc-regime">—</span></div>
+      <div class="flex justify-between"><span class="text-slate-400">Alíquota estimada</span><span class="font-bold text-slate-700 dark:text-slate-200" id="mc-aliquota">—</span></div>
+      <div class="flex justify-between"><span class="text-slate-400">WhatsApp</span><span class="font-bold text-slate-700 dark:text-slate-200" id="mc-telefone">—</span></div>
+    </div>
+    <div class="flex gap-2">
+      <button onclick="imprimirPosCadastro()" class="flex-1 py-2.5 rounded-xl bg-slate-800 dark:bg-slate-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-slate-700 dark:hover:bg-slate-600 transition-all">
+        <i data-lucide="printer" class="w-3.5 h-3.5"></i> Imprimir resumo
+      </button>
+      <button onclick="fecharModalPosCadastro()" class="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all">
+        <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i> Começar
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- PRINT PÓS-CADASTRO -->
+<div id="print-pos-cadastro" style="display:none;" class="p-8 text-black font-sans">
+  <div style="border-bottom:2px solid #10b981;padding-bottom:14px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:flex-end;">
+    <div><div style="font-size:20px;font-weight:900;letter-spacing:-0.03em;">GESTORFISCAL</div><div style="font-size:10px;color:#64748b;margin-top:2px;">Confirmação de Cadastro · 2026</div></div>
+    <div style="text-align:right;font-size:10px;color:#64748b;" id="ppc-date"></div>
+  </div>
+  <div style="font-size:14px;font-weight:700;color:#065f46;margin-bottom:12px;">✓ Conta criada com sucesso</div>
+  <table style="width:100%;border-collapse:collapse;font-size:11px;">
+    <tr><td style="padding:6px 8px;border:1px solid #e2e8f0;background:#f8fafc;font-weight:600;width:40%;">Nome</td><td style="padding:6px 8px;border:1px solid #e2e8f0;" id="ppc-nome">—</td></tr>
+    <tr><td style="padding:6px 8px;border:1px solid #e2e8f0;background:#f8fafc;font-weight:600;">Empresa</td><td style="padding:6px 8px;border:1px solid #e2e8f0;" id="ppc-empresa">—</td></tr>
+    <tr><td style="padding:6px 8px;border:1px solid #e2e8f0;background:#f8fafc;font-weight:600;">E-mail</td><td style="padding:6px 8px;border:1px solid #e2e8f0;" id="ppc-email">—</td></tr>
+    <tr><td style="padding:6px 8px;border:1px solid #e2e8f0;background:#f8fafc;font-weight:600;">WhatsApp</td><td style="padding:6px 8px;border:1px solid #e2e8f0;" id="ppc-telefone">—</td></tr>
+    <tr><td style="padding:6px 8px;border:1px solid #e2e8f0;background:#f8fafc;font-weight:600;">Regime Tributário</td><td style="padding:6px 8px;border:1px solid #e2e8f0;color:#059669;font-weight:700;" id="ppc-regime">—</td></tr>
+    <tr><td style="padding:6px 8px;border:1px solid #e2e8f0;background:#f8fafc;font-weight:600;">Alíquota Estimada</td><td style="padding:6px 8px;border:1px solid #e2e8f0;font-weight:700;" id="ppc-aliquota">—</td></tr>
+  </table>
+  <div style="margin-top:16px;font-size:9px;color:#94a3b8;">GESTORFISCAL © 2026 — Triagem e Precificação Tributária. Este documento não substitui assessoria fiscal.</div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     TELA: REDEFINIR SENHA
+══════════════════════════════════════════════ -->
+<div id="reset-screen" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-100 dark:bg-[#020617] px-4 no-print">
+  <div class="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-3xl p-8 max-w-sm w-full shadow-2xl anim-up relative overflow-hidden">
+    <div class="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-700"></div>
+
+    <div class="text-center mb-6">
+      <div class="w-14 h-14 rounded-2xl bg-blue-100 dark:bg-blue-950/40 flex items-center justify-center mx-auto mb-3">
+        <i data-lucide="lock-keyhole" class="w-7 h-7 text-blue-500"></i>
+      </div>
+      <h2 class="text-xl font-extrabold text-slate-800 dark:text-white">Nova senha</h2>
+      <p class="text-xs text-slate-400 mt-1">Escolha uma senha segura para sua conta.</p>
+    </div>
+
+    <div class="space-y-4">
+      <div>
+        <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Nova senha</label>
+        <div class="relative">
+          <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="lock" class="w-4 h-4"></i></span>
+          <input type="password" id="reset-password" placeholder="Mínimo 6 caracteres"
+            class="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+        </div>
+      </div>
+      <div>
+        <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Confirmar senha</label>
+        <div class="relative">
+          <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="lock" class="w-4 h-4"></i></span>
+          <input type="password" id="reset-password-confirm" placeholder="Repita a senha"
+            class="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+        </div>
+      </div>
+      <button onclick="doResetPassword()" id="btn-reset" class="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-900/20">
+        <i data-lucide="check" class="w-4 h-4" id="icon-reset"></i>
+        <span id="label-reset">Salvar nova senha</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     TELA: AGUARDANDO ATIVAÇÃO
+══════════════════════════════════════════════ -->
+<div id="pending-screen" class="hidden fixed inset-0 z-40 flex items-center justify-center bg-slate-100 dark:bg-[#020617] px-4 no-print">
+  <div class="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-3xl p-10 max-w-sm w-full shadow-2xl text-center anim-up relative overflow-hidden">
+    <div class="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500"></div>
+
+    <!-- Ícone animado -->
+    <div class="relative inline-flex mb-6">
+      <div class="pulse-ring w-20 h-20 rounded-full bg-amber-100 dark:bg-amber-950/30 flex items-center justify-center relative">
+        <i data-lucide="clock" class="w-9 h-9 text-amber-500"></i>
+      </div>
+    </div>
+
+    <h2 class="text-xl font-extrabold text-slate-800 dark:text-white mb-2">Conta em análise</h2>
+    <p class="text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
+      Seu cadastro foi recebido! Nossa equipe irá analisar e ativar seu acesso em breve.<br>
+      <span class="text-amber-500 font-semibold">Você será notificado automaticamente.</span>
+    </p>
+
+    <!-- Dots animados -->
+    <div class="flex justify-center gap-2 mb-8">
+      <div class="pending-dot w-2.5 h-2.5 rounded-full bg-amber-400"></div>
+      <div class="pending-dot w-2.5 h-2.5 rounded-full bg-amber-400"></div>
+      <div class="pending-dot w-2.5 h-2.5 rounded-full bg-amber-400"></div>
+    </div>
+
+    <!-- Info da conta -->
+    <div class="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-4 mb-6 text-left space-y-2">
+      <div class="flex items-center justify-between text-xs">
+        <span class="text-slate-400">Empresa</span>
+        <span class="font-bold text-slate-700 dark:text-slate-200" id="pend-empresa">—</span>
+      </div>
+      <div class="flex items-center justify-between text-xs">
+        <span class="text-slate-400">Regime</span>
+        <span class="font-bold text-slate-700 dark:text-slate-200" id="pend-regime">—</span>
+      </div>
+      <div class="flex items-center justify-between text-xs">
+        <span class="text-slate-400">Status</span>
+        <span class="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 font-bold text-[10px]">Aguardando ativação</span>
+      </div>
+    </div>
+
+    <p class="text-[11px] text-slate-400 mb-5">Verificando automaticamente a cada 15s…</p>
+
+    <button onclick="checkUserStatus(true)" class="w-full py-2.5 rounded-xl text-sm font-bold bg-amber-500 hover:bg-amber-600 text-white transition-all flex items-center justify-center gap-2 mb-3">
+      <i data-lucide="refresh-cw" class="w-4 h-4"></i> Verificar agora
+    </button>
+    <button onclick="doLogout()" class="w-full py-2.5 rounded-xl text-sm font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-all">
+      Sair da conta
+    </button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     TELA: PAGAMENTO / PLANO
+══════════════════════════════════════════════ -->
+<div id="payment-screen" class="hidden fixed inset-0 z-40 flex items-center justify-center bg-slate-100 dark:bg-[#020617] px-4 no-print overflow-y-auto py-8">
+  <div class="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-3xl p-8 max-w-md w-full shadow-2xl anim-up relative overflow-hidden">
+    <div class="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-700"></div>
+
+    <div class="text-center mb-6">
+      <div class="w-14 h-14 rounded-2xl bg-emerald-100 dark:bg-emerald-950/40 flex items-center justify-center mx-auto mb-3">
+        <i data-lucide="zap" class="w-7 h-7 text-emerald-500"></i>
+      </div>
+      <h2 class="text-xl font-extrabold text-slate-800 dark:text-white">Ative seu plano</h2>
+      <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Seu acesso foi liberado! Escolha o plano para começar.</p>
+    </div>
+
+    <!-- Card do plano -->
+    <div id="payment-plan-card" class="plano-card p-6 mb-5"></div>
+
+    <!-- Verificando pagamento -->
+    <div id="payment-verifying" class="hidden text-center py-4">
+      <div class="inline-flex items-center gap-2 text-emerald-500 text-sm font-semibold">
+        <i data-lucide="loader-2" class="w-4 h-4 spinner"></i> Verificando pagamento…
+      </div>
+      <p class="text-xs text-slate-400 mt-2">Isso pode levar alguns instantes após o pagamento.</p>
+    </div>
+
+    <button id="btn-pay" onclick="goToStripe()" class="w-full py-3.5 rounded-2xl text-sm font-extrabold bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 mb-3">
+      <i data-lucide="credit-card" class="w-4 h-4"></i> Adquirir Licença
+    </button>
+    <p class="text-[11px] text-center text-slate-400 mb-2">Pagamento seguro via Stripe 🔒</p>
+    <p class="text-[11px] text-center text-slate-400 mb-4">Precisa de ajuda? Fale pelo <button onclick="abrirWhatsApp(event)" class="text-emerald-500 font-bold hover:underline">WhatsApp</button></p>
+    <button onclick="doLogout()" class="w-full py-2.5 rounded-xl text-sm font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-all">
+      Sair da conta
+    </button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     TELA: PAINEL ADMIN
+══════════════════════════════════════════════ -->
+<div id="admin-screen" class="hidden fixed inset-0 z-50 flex flex-col bg-slate-100 dark:bg-[#020617] no-print overflow-y-auto">
+  <div class="max-w-3xl mx-auto w-full px-4 py-8">
+
+    <!-- Header admin -->
+    <div class="flex items-center justify-between mb-6">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl admin-badge flex items-center justify-center">
+          <i data-lucide="shield" class="w-5 h-5 text-white"></i>
+        </div>
+        <div>
+          <h1 class="text-lg font-extrabold text-slate-800 dark:text-white">Painel Admin</h1>
+          <p class="text-xs text-slate-400">GestorFiscal PRO — Gestão de contas</p>
+        </div>
+      </div>
+      <button onclick="closeAdminPanel()" class="px-4 py-2 rounded-xl text-sm font-bold bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 transition-all flex items-center gap-1.5">
+        <i data-lucide="x" class="w-4 h-4"></i> Fechar
+      </button>
+    </div>
+
+    <!-- Stats rápidas -->
+    <div id="admin-stats" class="grid grid-cols-3 gap-3 mb-6"></div>
+
+    <!-- Filtro -->
+    <div class="flex gap-2 mb-4">
+      <button onclick="renderAdminUsers('pending')" id="filter-pending" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 text-white transition-all">Aguardando</button>
+      <button onclick="renderAdminUsers('pending_payment')" id="filter-pmt" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 transition-all">Aguard. Pag.</button>
+      <button onclick="renderAdminUsers('active')" id="filter-active" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 transition-all">Ativos</button>
+      <button onclick="renderAdminUsers('all')" id="filter-all" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 transition-all">Todos</button>
+    </div>
+
+    <!-- Lista de usuários -->
+    <div id="admin-users-list" class="space-y-3">
+      <div class="text-center py-12 text-slate-400 text-sm">
+        <i data-lucide="loader-2" class="w-6 h-6 spinner mx-auto mb-2"></i> Carregando…
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     APP PRINCIPAL
+══════════════════════════════════════════════ -->
+<div id="app-screen" class="hidden flex flex-col min-h-screen">
+
+  <!-- DEMO BANNER -->
+  <div id="demo-banner" class="hidden demo-banner bg-amber-500 text-black text-xs font-bold text-center py-2 px-4 no-print">
+    MODO DEMO — Assine o plano para processar seus próprios XMLs · <a href="#" onclick="setAuthMode('login');showLogin()" class="underline">Criar conta grátis</a>
+  </div>
+
+  <!-- HEADER -->
+  <header class="sticky top-0 z-30 bg-white/80 dark:bg-[#0f172a]/80 backdrop-blur border-b border-slate-200 dark:border-slate-800 no-print">
+    <div class="max-w-5xl mx-auto px-4 flex items-center justify-between h-14">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center shadow-md shadow-emerald-900/30">
+          <i data-lucide="landmark" class="w-4 h-4 text-white"></i>
+        </div>
+        <div>
+          <span class="font-extrabold text-base tracking-tight">GESTOR<span class="text-emerald-600 dark:text-emerald-400">FISCAL</span></span>
+          <span class="ml-2 text-[9px] font-bold text-slate-400 uppercase tracking-widest hidden sm:inline">2026</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <span id="user-empresa-label" class="text-xs text-slate-500 dark:text-slate-400 hidden sm:block truncate max-w-[180px]"></span>
+        <!-- Botão Admin (só aparece para admins) -->
+        <button id="btn-admin" onclick="openAdminPanel()" class="hidden w-8 h-8 rounded-lg admin-badge flex items-center justify-center hover:opacity-80 transition-all" title="Painel Admin">
+          <i data-lucide="shield" class="w-4 h-4 text-white"></i>
+        </button>
+        <button onclick="toggleTheme()" class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+          <i data-lucide="sun" class="w-4 h-4 block dark:hidden text-slate-600"></i>
+          <i data-lucide="moon" class="w-4 h-4 hidden dark:block text-slate-400"></i>
+        </button>
+        <button onclick="doLogout()" class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors" title="Sair">
+          <i data-lucide="log-out" class="w-4 h-4 text-slate-600 dark:text-slate-400"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- NAV TABS -->
+  <nav class="sticky top-14 z-20 bg-white/80 dark:bg-[#0f172a]/80 backdrop-blur border-b border-slate-200 dark:border-slate-800 no-print">
+    <div class="max-w-5xl mx-auto px-4 flex gap-1 py-2">
+      <button onclick="switchTab(0)" id="nav-0" class="px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all bg-emerald-600 text-white">
+        <i data-lucide="file-scan" class="w-3.5 h-3.5"></i> Processar XML
+      </button>
+      <button onclick="switchTab(1)" id="nav-1" class="px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
+        <i data-lucide="clock" class="w-3.5 h-3.5"></i> Histórico
+      </button>
+      <button onclick="switchTab(2)" id="nav-2" class="px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
+        <i data-lucide="settings" class="w-3.5 h-3.5"></i> Configurações
+      </button>
+    </div>
+  </nav>
+
+  <main class="flex-1 max-w-5xl mx-auto w-full px-4 py-6 tab-container">
+
+    <!-- ── TAB 0: PROCESSAR XML ── -->
+    <div id="tab-0" class="tab-pane active space-y-5">
+
+      <!-- Regime atual badge -->
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="text-xs bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold px-3 py-1 rounded-full border border-emerald-200 dark:border-emerald-800 flex items-center gap-1.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 pulse-dot"></span>
+          Regime: <span id="regime-badge-text">—</span>
+        </span>
+        <span id="regime-details-badge" class="text-xs text-slate-400 hidden"></span>
+      </div>
+
+      <!-- Upload XML -->
+      <div id="xml-upload-area" class="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-8 text-center cursor-pointer hover:border-emerald-500 transition-colors group" onclick="document.getElementById('xml-input').click()">
+        <div class="w-12 h-12 mx-auto mb-3 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center group-hover:bg-emerald-50 dark:group-hover:bg-emerald-950/50 transition-colors">
+          <i data-lucide="upload-cloud" class="w-6 h-6 text-slate-400 group-hover:text-emerald-500 transition-colors"></i>
+        </div>
+        <p class="text-sm font-bold text-slate-600 dark:text-slate-300 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">Clique ou arraste um XML de NF-e</p>
+        <p class="text-xs text-slate-400 mt-1">Arquivo .xml de nota fiscal eletrônica</p>
+        <input type="file" id="xml-input" accept=".xml" class="hidden" onchange="handleXmlFile(event)">
+      </div>
+
+      <!-- Demo locked overlay -->
+      <div id="demo-xml-lock" class="hidden border-2 border-amber-400/50 rounded-2xl p-8 text-center bg-amber-500/5">
+        <div class="w-12 h-12 mx-auto mb-3 bg-amber-100 dark:bg-amber-950/50 rounded-xl flex items-center justify-center">
+          <i data-lucide="lock" class="w-6 h-6 text-amber-500"></i>
+        </div>
+        <p class="text-sm font-bold text-amber-600 dark:text-amber-400">Upload de XML bloqueado no Demo</p>
+        <p class="text-xs text-slate-400 mt-1">Você está explorando com dados de demonstração</p>
+        <button onclick="setAuthMode('signup');showLogin()" class="mt-4 px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all">Criar conta grátis →</button>
+      </div>
+
+      <!-- Configurações rápidas -->
+      <div class="grid grid-cols-1 gap-3">
+        <div class="hidden">
+          <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+            <i data-lucide="percent" class="w-3 h-3"></i> Margem Padrão (%)
+          </label>
+          <input type="number" id="cfg-margem" value="30" min="0" max="200" step="0.5" class="w-full px-3 py-2.5 bg-white dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+        <div class="hidden">
+          <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+            <i data-lucide="truck" class="w-3 h-3"></i> Frete Padrão (R$)
+          </label>
+          <input type="number" id="cfg-frete" value="0" min="0" step="0.01" class="w-full px-3 py-2.5 bg-white dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+            <i data-lucide="receipt" class="w-3 h-3"></i> ICMS Entrada padrão (%)
+          </label>
+          <input type="number" id="cfg-icms-entrada" value="12" min="0" max="25" step="0.5" title="Usado apenas como fallback quando a nota não traz pICMS/vICMS legível" class="w-full px-3 py-2.5 bg-white dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+      </div>
+
+      <!-- Tabela de produtos -->
+      <div id="products-section" class="hidden">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <div>
+            <span class="text-xs font-bold text-slate-600 dark:text-slate-300" id="xml-filename-label">—</span>
+            <span class="ml-2 text-xs text-slate-400" id="produtos-count"></span>
+          </div>
+          <div class="flex gap-2 flex-wrap">
+            <button onclick="toggleSidebarView()" id="btn-sidebar-toggle" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center gap-1 transition-all">
+              <i data-lucide="panel-left" class="w-3 h-3"></i> <span id="sidebar-toggle-label">Vista Sidebar</span>
+            </button>
+            <button onclick="recalcAll()" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1 transition-all">
+              <i data-lucide="refresh-cw" class="w-3 h-3"></i> Recalcular
+            </button>
+            <button onclick="printReport()" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 dark:bg-slate-700 hover:bg-slate-700 dark:hover:bg-slate-600 text-white flex items-center gap-1 transition-all">
+              <i data-lucide="printer" class="w-3 h-3"></i> Imprimir
+            </button>
+            <button onclick="saveToHistory()" id="btn-save-hist" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1 transition-all">
+              <i data-lucide="save" class="w-3 h-3"></i> Salvar
+            </button>
+          </div>
+        </div>
+
+        <!-- Summary cards -->
+        <div class="grid grid-cols-3 gap-3 mb-4">
+          <div class="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-center">
+            <div class="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Produtos</div>
+            <div class="text-xl font-extrabold text-slate-800 dark:text-white" id="sum-qty">0</div>
+          </div>
+          <div class="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-center">
+            <div class="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Custo Total</div>
+            <div class="text-sm font-extrabold text-slate-800 dark:text-white" id="sum-custo">R$ 0,00</div>
+          </div>
+          <div class="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900 rounded-xl p-3 text-center">
+            <div class="text-[10px] text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-1">Venda Total</div>
+            <div class="text-sm font-extrabold text-emerald-700 dark:text-emerald-300" id="sum-venda">R$ 0,00</div>
+          </div>
+        </div>
+
+        <!-- VISTA TABELA -->
+        <div id="view-tabela">
+          <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+            <table class="w-full text-xs">
+              <thead class="bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 uppercase text-[9px] tracking-wider">
+                <tr>
+                  <th class="px-3 py-2.5 text-left">Produto</th>
+                  <th class="px-3 py-2.5">NCM</th>
+                  <th class="px-3 py-2.5">Qtd</th>
+                  <th class="px-3 py-2.5">Custo Unit</th>
+                  <th class="px-3 py-2.5">Custo Efetivo</th>
+                  <th class="px-3 py-2.5">Frete R$</th>
+                  <th class="px-3 py-2.5">Margem%</th>
+                  <th class="px-3 py-2.5 text-orange-500">IPI% TIPI</th>
+                  <th class="px-3 py-2.5">Alíquota</th>
+                  <th class="px-3 py-2.5 font-extrabold text-emerald-600">Preço Sugerido</th>
+                  <th class="px-3 py-2.5">Ajuste</th>
+                </tr>
+              </thead>
+              <tbody id="products-tbody" class="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-[#0f172a]"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- VISTA SIDEBAR -->
+        <div id="view-sidebar" class="hidden flex gap-3" style="min-height:400px;">
+          <!-- Lista esquerda -->
+          <div class="w-56 shrink-0 bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl overflow-y-auto" style="max-height:520px;">
+            <div class="px-3 py-2 border-b border-slate-100 dark:border-slate-800 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Produtos</div>
+            <div id="sidebar-product-list" class="p-2 space-y-1"></div>
+          </div>
+          <!-- Detalhe direita -->
+          <div class="flex-1 bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl p-5" id="sidebar-detail">
+            <div class="flex flex-col items-center justify-center h-full text-slate-400 text-xs text-center py-12">
+              <i data-lucide="mouse-pointer-click" class="w-8 h-8 mb-2 opacity-40"></i>
+              Selecione um produto ao lado para precificá-lo.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="empty-state" class="text-center py-10 text-slate-400 text-sm hidden">
+        <i data-lucide="file-x" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
+        <p>Nenhum produto encontrado no XML.</p>
+      </div>
+    </div>
+
+    <!-- ── TAB 1: HISTÓRICO ── -->
+    <div id="tab-1" class="tab-pane right space-y-4">
+      <div class="flex items-center justify-between">
+        <h2 class="text-sm font-extrabold text-slate-800 dark:text-white flex items-center gap-2">
+          <i data-lucide="clock" class="w-4 h-4 text-emerald-500"></i> Histórico de Análises
+        </h2>
+        <button onclick="loadHistory()" class="text-xs text-emerald-600 dark:text-emerald-400 font-bold hover:underline flex items-center gap-1">
+          <i data-lucide="refresh-cw" class="w-3 h-3"></i> Atualizar
+        </button>
+      </div>
+      <div id="history-list" class="space-y-2">
+        <p class="text-xs text-slate-400 text-center py-8">Carregando histórico...</p>
+      </div>
+    </div>
+
+    <!-- ── TAB 2: CONFIGURAÇÕES ── -->
+    <div id="tab-2" class="tab-pane right space-y-4">
+      <h2 class="text-sm font-extrabold text-slate-800 dark:text-white flex items-center gap-2">
+        <i data-lucide="settings" class="w-4 h-4 text-emerald-500"></i> Configurações
+      </h2>
+
+      <!-- Sub-tabs -->
+      <div class="flex flex-wrap gap-1 bg-slate-100 dark:bg-slate-900/60 p-1 rounded-xl">
+        <button onclick="setCfgTab('empresa')"  id="ctab-empresa"  class="cfg-tab-btn active-cfg-tab px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1"><i data-lucide="building-2" class="w-3 h-3"></i> Empresa</button>
+        <button onclick="setCfgTab('calculo')"  id="ctab-calculo"  class="cfg-tab-btn px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800"><i data-lucide="calculator" class="w-3 h-3"></i> Cálculo</button>
+        <button onclick="setCfgTab('despesas')" id="ctab-despesas" class="cfg-tab-btn px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800"><i data-lucide="receipt" class="w-3 h-3"></i> Despesas</button>
+        <button onclick="setCfgTab('drive')"    id="ctab-drive"    class="cfg-tab-btn px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800"><i data-lucide="hard-drive" class="w-3 h-3"></i> Drive</button>
+      </div>
+
+      <!-- ─── EMPRESA ─── -->
+      <div id="cfg-panel-empresa" class="cfg-panel bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Razão Social</label>
+            <input type="text" id="cfg-empresa" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">CNPJ</label>
+            <input type="text" id="cfg-cnpj" maxlength="18" oninput="maskCNPJ(this)" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+          </div>
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Regime Tributário</label>
+          <select id="cfg-regime" onchange="onRegimeChange()" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            <option value="MEI">MEI — Microempreendedor Individual</option>
+            <option value="SN" selected>Simples Nacional</option>
+            <option value="LP">Lucro Presumido</option>
+            <option value="LR">Lucro Real</option>
+          </select>
+        </div>
+        <div id="cfg-sn-block" class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Anexo Simples</label>
+            <select id="cfg-sn-anexo" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+              <option value="I">Anexo I (Comércio)</option>
+              <option value="II">Anexo II (Indústria)</option>
+              <option value="III">Anexo III</option>
+              <option value="IV">Anexo IV</option>
+              <option value="V">Anexo V</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Receita Bruta 12m (R$)</label>
+            <input type="number" id="cfg-rba" value="360000" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+          </div>
+        </div>
+        <button onclick="saveConfig()" class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all flex items-center gap-1.5">
+          <i data-lucide="save" class="w-3.5 h-3.5"></i> Salvar Configurações
+        </button>
+      </div>
+
+      <!-- ─── CÁLCULO ─── -->
+      <div id="cfg-panel-calculo" class="cfg-panel hidden space-y-4">
+        <div id="calculo-regime-content"><!-- preenchido por renderCalculoTab() --></div>
+        <div class="bg-slate-900 rounded-xl p-4 text-xs font-mono min-h-[56px] flex items-center gap-2">
+          <i data-lucide="info" class="w-4 h-4 shrink-0 text-slate-500"></i>
+          <span id="calculo-desc-text" class="text-slate-400">Clique sobre um campo acima para ver a explicação detalhada aqui.</span>
+        </div>
+      </div>
+
+      <!-- ─── DESPESAS ─── -->
+      <div id="cfg-panel-despesas" class="cfg-panel hidden space-y-4">
+        <div class="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-4">
+          <!-- Período de Referência -->
+          <div>
+            <h3 class="text-xs font-extrabold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-3 flex items-center gap-1.5"><i data-lucide="calendar" class="w-3.5 h-3.5 text-emerald-500"></i> Período de Referência</h3>
+            <div class="grid grid-cols-3 gap-3">
+              <div><label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">De</label>
+                <input type="month" id="desp-de" class="w-full px-3 py-2 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" onchange="calcDespesas()"></div>
+              <div><label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Até</label>
+                <input type="month" id="desp-ate" class="w-full px-3 py-2 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" onchange="calcDespesas()"></div>
+              <div><label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Faturamento Total (R$)</label>
+                <input type="number" id="desp-fat" placeholder="0,00" class="w-full px-3 py-2 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" oninput="calcDespesas()"></div>
+            </div>
+          </div>
+
+          <!-- PESSOAL -->
+          <div>
+            <h4 class="text-[11px] font-extrabold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-2 flex items-center gap-1"><i data-lucide="users" class="w-3 h-3"></i> Pessoal</h4>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <div><label class="desp-label">Salários</label><input type="number" id="desp-salarios" placeholder="0,00" class="desp-input" oninput="calcDespesas()"></div>
+              <div><label class="desp-label">Pró-labore</label><input type="number" id="desp-prolabore" placeholder="0,00" class="desp-input" oninput="calcDespesas()"></div>
+              <div><label class="desp-label">FGTS (8%)</label><input type="number" id="desp-fgts" placeholder="0,00" class="desp-input" oninput="calcDespesas()"></div>
+              <div><label class="desp-label">INSS Patronal</label><input type="number" id="desp-inss" placeholder="0,00" class="desp-input" oninput="calcDespesas()"></div>
+              <div><label class="desp-label">Férias + 1/3</label><input type="number" id="desp-ferias" placeholder="0,00" class="desp-input" oninput="calcDespesas()"></div>
+              <div><label class="desp-label">13º Salário</label><input type="number" id="desp-decimo" placeholder="0,00" class="desp-input" oninput="calcDespesas()"></div>
+            </div>
+          </div>
+
+          <!-- OCUPAÇÃO -->
+          <div>
+            <h4 class="text-[11px] font-extrabold text-orange-600 dark:text-orange-400 uppercase tracking-wider mb-2 flex items-center gap-1"><i data-lucide="home" class="w-3 h-3"></i> Ocupação</h4>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <div><label class="desp-label">Aluguel</label><input type="number" id="desp-aluguel" placeholder="0,00" class="desp-input" oninput="calcDespesas()"></div>
+              <div><label class="desp-label">Condomínio</label><input type="number" id="desp-cond" placeholder="0,00" class="desp-input" oninput="calcDespesas()"></div>
+              <div><label class="desp-label">IPTU</label><input type="number" id="desp-iptu" placeholder="0,00" class="desp-input" oninput="calcDespesas()"></div>
+              <div><label class="desp-label">Água</label><input type="number" id="desp-agua" placeholder="0,00" class="desp-input" oninput="calcDespesas()"></div>
+              <div><label class="desp-label">Energia Elétrica</label><input type="number" id="desp-energia" placeholder="0,00" class="desp-input" oninput="calcDespesas()"></div>
+            </div>
+          </div>
+
+          <!-- COMUNICAÇÃO / TI -->
+          <div>
+            <h4 class="text-[11px] font-extrabold text-purple-600 dark:text-purple-400 uppercase tracking-wider mb-2 flex items-center gap-1"><i data-lucide="wifi" class="w-3 h-3"></i> Comunicação e TI</h4>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <div><label class="desp-label">Internet / Telefone</label><input type="number" id="desp-internet" placeholder="0,00" class="desp-input" oninput="calcDespesas()"></div>
+              <div><label class="desp-label">Sistema ERP / Software</label><input type="number" id="desp-erp" placeholder="0,00" class="desp-input" oninput="calcDespesas()"></div>
+              <div><label class="desp-label">Celulares Corporativos</label><input type="number" id="desp-celulares" placeholder="0,00" class="desp-input" oninput="calcDespesas()"></div>
+            </div>
+          </div>
+
+          <!-- ADMINISTRATIVAS -->
+          <div>
+            <h4 class="text-[11px] font-extrabold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1"><i data-lucide="briefcase" class="w-3 h-3"></i> Despesas Administrativas</h4>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <div><label class="desp-label">Honorários Contábeis</label><input type="number" id="desp-contabil" placeholder="0,00" class="desp-input" oninput="calcDespesas()"></div>
+              <div><label class="desp-label">Despesas Bancárias</label><input type="number" id="desp-bancarias" placeholder="0,00" class="desp-input" oninput="calcDespesas()"></div>
+              <div><label class="desp-label">Seguros</label><input type="number" id="desp-seguros" placeholder="0,00" class="desp-input" oninput="calcDespesas()"></div>
+              <div><label class="desp-label">Manutenção</label><input type="number" id="desp-manut" placeholder="0,00" class="desp-input" oninput="calcDespesas()"></div>
+              <div><label class="desp-label">Material de Escritório</label><input type="number" id="desp-material" placeholder="0,00" class="desp-input" oninput="calcDespesas()"></div>
+              <div><label class="desp-label">Propaganda e Marketing</label><input type="number" id="desp-marketing" placeholder="0,00" class="desp-input" oninput="calcDespesas()"></div>
+              <div><label class="desp-label">Outros</label><input type="number" id="desp-outros" placeholder="0,00" class="desp-input" oninput="calcDespesas()"></div>
+            </div>
+          </div>
+
+          <!-- VARIÁVEIS -->
+          <div>
+            <h4 class="text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-2 flex items-center gap-1"><i data-lucide="percent" class="w-3 h-3"></i> Despesas Variáveis (% sobre venda)</h4>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div><label class="desp-label">Taxa Cartão Crédito</label><input type="number" id="desp-tcredito" value="2.5" step="0.1" min="0" class="desp-input" oninput="calcDespesas()"></div>
+              <div><label class="desp-label">Taxa Cartão Débito</label><input type="number" id="desp-tdebito" value="1.5" step="0.1" min="0" class="desp-input" oninput="calcDespesas()"></div>
+              <div><label class="desp-label">Taxa PIX</label><input type="number" id="desp-tpix" value="0" step="0.1" min="0" class="desp-input" oninput="calcDespesas()"></div>
+              <div><label class="desp-label">Taxa Marketplace</label><input type="number" id="desp-tmkt" value="0" step="0.1" min="0" class="desp-input" oninput="calcDespesas()"></div>
+            </div>
+          </div>
+
+          <!-- RESUMO -->
+          <div class="bg-slate-50 dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+            <h4 class="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-3">Resumo das Despesas</h4>
+            <div class="grid grid-cols-3 gap-3 text-center">
+              <div class="bg-white dark:bg-slate-800 rounded-lg p-3">
+                <div class="text-[10px] text-slate-400 mb-1">Custo Fixo</div>
+                <div class="text-lg font-extrabold text-slate-800 dark:text-white" id="desp-res-fixo">0,00%</div>
+                <div class="text-[9px] text-slate-400 mt-0.5" id="desp-res-fixo-val">R$ 0,00</div>
+              </div>
+              <div class="bg-white dark:bg-slate-800 rounded-lg p-3">
+                <div class="text-[10px] text-slate-400 mb-1">Custo Variável</div>
+                <div class="text-lg font-extrabold text-blue-600 dark:text-blue-400" id="desp-res-var">0,00%</div>
+              </div>
+              <div class="bg-emerald-50 dark:bg-emerald-950/30 rounded-lg p-3 border border-emerald-200 dark:border-emerald-900">
+                <div class="text-[10px] text-emerald-600 dark:text-emerald-400 mb-1">Total Operacional</div>
+                <div class="text-lg font-extrabold text-emerald-700 dark:text-emerald-300" id="desp-res-total">0,00%</div>
+              </div>
+            </div>
+            <p class="text-[10px] text-slate-400 mt-3 flex items-center gap-1">
+              <i data-lucide="check-circle" class="w-3 h-3 text-emerald-500"></i>
+              O percentual total é automaticamente incluído no cálculo do preço de venda sugerido.
+            </p>
+          </div>
+
+          <button onclick="saveDespesas()" class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all flex items-center gap-1.5">
+            <i data-lucide="save" class="w-3.5 h-3.5"></i> Salvar Despesas
+          </button>
+        </div>
+      </div>
+
+      <!-- ─── DRIVE ─── -->
+      <div id="cfg-panel-drive" class="cfg-panel hidden">
+        <div class="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-3">
+          <h3 class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Google Drive</h3>
+          <p class="text-xs text-slate-400">Cole o link da pasta do Google Drive com seus XMLs de NF-e.</p>
+          <div class="flex gap-2">
+            <input type="url" id="cfg-drive" placeholder="https://drive.google.com/drive/folders/..." class="flex-1 px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            <button onclick="openDrive()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl flex items-center gap-1">
+              <i data-lucide="external-link" class="w-3.5 h-3.5"></i> Abrir
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+</div>
+
+<script>
+/* ════════════════════════════════════════════════
+   ANTI-INSPECT PROTECTION
+════════════════════════════════════════════════ */
+(function(){
+  // Disable right-click
+  document.addEventListener('contextmenu', e => e.preventDefault());
+  // Disable keyboard shortcuts for DevTools
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'F12') { e.preventDefault(); return false; }
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && ['I','J','C','K'].includes(e.key.toUpperCase())) { e.preventDefault(); return false; }
+    if ((e.ctrlKey || e.metaKey) && e.key.toUpperCase() === 'U') { e.preventDefault(); return false; }
+    if (e.key === 'F5' && e.ctrlKey) { e.preventDefault(); return false; }
+  });
+  // Periodic console clear
+  setInterval(() => { try { console.clear(); } catch(x){} }, 3000);
+  // DevTools timing detection
+  let _dt = false;
+  const _check = () => {
+    const t = performance.now();
+    debugger;
+    if (performance.now() - t > 100) {
+      if (!_dt) { _dt = true; document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#020617;color:#10b981;font-family:monospace;font-size:18px;text-align:center;padding:40px;">Acesso negado.<br>Feche as ferramentas do desenvolvedor.</div>'; }
+    } else { _dt = false; }
+  };
+  setInterval(_check, 2000);
+})();
+
+/* ════════════════════════════════════════════════
+   CONSTANTES
+════════════════════════════════════════════════ */
+const GF_SB_URL = 'https://qaiqflcxfxygynumapyp.supabase.co';
+const GF_SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhaXFmbGN4Znh5Z3ludW1hcHlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1ODQ2NDMsImV4cCI6MjA5NzE2MDY0M30.pAViYST7ZWOVCcIVSGu6GbD005WgoTxQpwCj6iQTYKU';
+const DEMO_EMAIL = 'demo@gestorfiscal.com.br';
+const DEMO_PASS  = 'gestorfiscal2026';
+
+/* TIPI — Tabela de IPI por capítulo NCM (2 dígitos) e posições específicas comuns */
+const TIPI_CAP = {
+  '01':0,'02':0,'03':0,'04':0,'05':0,'06':0,'07':0,'08':0,'09':0,'10':0,
+  '11':0,'12':0,'13':0,'14':0,'15':0,'16':0,'17':0,'18':0,'19':0,'20':0,
+  '21':0,'22':20,'23':0,'24':330,'25':0,'26':0,'27':0,'28':0,'29':0,'30':0,
+  '31':0,'32':0,'33':15,'34':0,'35':0,'36':0,'37':0,'38':0,'39':5,'40':3,
+  '41':0,'42':5,'43':0,'44':0,'45':0,'46':0,'47':0,'48':5,'49':0,'50':0,
+  '51':0,'52':0,'53':0,'54':0,'55':0,'56':0,'57':0,'58':0,'59':0,'60':0,
+  '61':0,'62':0,'63':0,'64':10,'65':0,'66':10,'67':0,'68':0,'69':0,'70':5,
+  '71':0,'72':0,'73':0,'74':0,'75':0,'76':0,'77':0,'78':0,'79':0,'80':0,
+  '81':0,'82':0,'83':0,'84':5,'85':10,'86':5,'87':30,'88':5,'89':5,'90':5,
+  '91':10,'92':20,'93':0,'94':0,'95':10,'96':0,'97':0,'98':0,'99':0
+};
+/* Posições NCM específicas (4 dígitos) com alíquota diferente do capítulo */
+const TIPI_NCM = {
+  '8517': 10,'8518': 15,'8519': 5,'8521': 10,'8523': 0,'8525': 10,
+  '8527': 10,'8528': 20,'8529': 5,'8536': 5,'8544': 0,'8545': 0,
+  '8702': 25,'8703': 25,'8704': 25,'8711': 25,'8712': 0,
+  '2203': 55,'2204': 20,'2205': 20,'2206': 15,'2207': 0,'2208': 80,
+  '2401': 200,'2402': 200,'2403': 150,
+  '3301': 10,'3302': 10,'3303': 25,'3304': 20,'3305': 15,'3307': 15,
+  '8706': 0,'8707': 0,'8708': 0,
+  '9401': 0,'9403': 0,'9404': 0,'9405': 10,
+  '9501': 10,'9502': 10,'9503': 10,'9504': 20,
+};
+
+function getIpiFromNcm(ncm) {
+  if (!ncm) return 0;
+  const n = String(ncm).replace(/\D/g, '');
+  const pos4 = n.slice(0, 4);
+  const cap2 = n.slice(0, 2);
+  if (TIPI_NCM[pos4] !== undefined) return TIPI_NCM[pos4];
+  if (TIPI_CAP[cap2] !== undefined) return TIPI_CAP[cap2];
+  return 0;
+}
+
+/* ════════════════════════════════════════════════
+   BANCO NCM FISCAL — CST / ST / Isenção
+   cst: CST ICMS de saída mais comum para o capítulo
+   st:  produto tipicamente sujeito a ICMS-ST
+   red: % redução base ICMS (0=sem redução)
+   isen: ICMS isento (cst 40)
+   pisCofins: CST PIS/COFINS
+════════════════════════════════════════════════ */
+const NCM_FISCAL = {
+  '01':{cat:'Animais vivos',             cst:'00',st:false,red:0,isen:false,pisCofins:'01'},
+  '02':{cat:'Carnes e miudezas',         cst:'00',st:false,red:0,isen:false,pisCofins:'01'},
+  '03':{cat:'Peixes e pescados',         cst:'00',st:false,red:0,isen:false,pisCofins:'01'},
+  '04':{cat:'Laticínios / ovos',         cst:'00',st:false,red:0,isen:false,pisCofins:'01'},
+  '07':{cat:'Legumes e hortaliças',      cst:'40',st:false,red:0,isen:true, pisCofins:'07'},
+  '08':{cat:'Frutas',                    cst:'40',st:false,red:0,isen:true, pisCofins:'07'},
+  '09':{cat:'Café / chá / especiarias',  cst:'00',st:false,red:0,isen:false,pisCofins:'01'},
+  '10':{cat:'Cereais',                   cst:'00',st:false,red:0,isen:false,pisCofins:'01'},
+  '11':{cat:'Farinhas / amidos',         cst:'00',st:false,red:0,isen:false,pisCofins:'01'},
+  '16':{cat:'Conservas / embutidos',     cst:'00',st:false,red:0,isen:false,pisCofins:'01'},
+  '17':{cat:'Açúcares e derivados',      cst:'00',st:false,red:0,isen:false,pisCofins:'01'},
+  '18':{cat:'Cacau / chocolate',         cst:'00',st:false,red:0,isen:false,pisCofins:'01'},
+  '19':{cat:'Pães / biscoitos / massas', cst:'00',st:false,red:0,isen:false,pisCofins:'01'},
+  '21':{cat:'Preparações alimentícias',  cst:'00',st:false,red:0,isen:false,pisCofins:'01'},
+  '22':{cat:'Bebidas',                   cst:'10',st:true, red:0,isen:false,pisCofins:'01'},
+  '24':{cat:'Tabaco / cigarros',         cst:'10',st:true, red:0,isen:false,pisCofins:'01'},
+  '27':{cat:'Combustíveis / óleos',      cst:'60',st:true, red:0,isen:false,pisCofins:'01'},
+  '30':{cat:'Medicamentos / farmácia',   cst:'40',st:false,red:0,isen:true, pisCofins:'07'},
+  '33':{cat:'Perfumes / cosméticos',     cst:'10',st:true, red:0,isen:false,pisCofins:'01'},
+  '34':{cat:'Sabões / detergentes',      cst:'00',st:false,red:0,isen:false,pisCofins:'01'},
+  '39':{cat:'Plásticos e artefatos',     cst:'00',st:false,red:0,isen:false,pisCofins:'01'},
+  '40':{cat:'Borracha e artefatos',      cst:'00',st:false,red:0,isen:false,pisCofins:'01'},
+  '44':{cat:'Madeira e artefatos',       cst:'00',st:false,red:0,isen:false,pisCofins:'01'},
+  '48':{cat:'Papel / papelão',           cst:'00',st:false,red:0,isen:false,pisCofins:'01'},
+  '49':{cat:'Livros / jornais',          cst:'40',st:false,red:0,isen:true, pisCofins:'07'},
+  '61':{cat:'Vestuário de malha',        cst:'00',st:false,red:0,isen:false,pisCofins:'01'},
+  '62':{cat:'Vestuário de tecido',       cst:'00',st:false,red:0,isen:false,pisCofins:'01'},
+  '64':{cat:'Calçados',                  cst:'00',st:false,red:0,isen:false,pisCofins:'01'},
+  '73':{cat:'Artefatos de ferro / aço',  cst:'00',st:false,red:0,isen:false,pisCofins:'01'},
+  '82':{cat:'Ferramentas manuais',       cst:'00',st:false,red:0,isen:false,pisCofins:'01'},
+  '84':{cat:'Máquinas e aparelhos',      cst:'00',st:false,red:0,isen:false,pisCofins:'01'},
+  '85':{cat:'Equipamentos elétricos',    cst:'00',st:false,red:0,isen:false,pisCofins:'01'},
+  '87':{cat:'Veículos automotores',      cst:'10',st:true, red:0,isen:false,pisCofins:'01'},
+  '90':{cat:'Instr. ópticos / médicos',  cst:'00',st:false,red:0,isen:false,pisCofins:'01'},
+  '94':{cat:'Móveis / luminárias',       cst:'00',st:false,red:0,isen:false,pisCofins:'01'},
+  '95':{cat:'Brinquedos / jogos',        cst:'00',st:false,red:0,isen:false,pisCofins:'01'},
+  /* 4-dígitos — sobrescrevem capítulo */
+  '8517':{cat:'Telefones e celulares',   cst:'10',st:true, red:0,isen:false,pisCofins:'01'},
+  '8528':{cat:'Monitores / TVs',         cst:'10',st:true, red:0,isen:false,pisCofins:'01'},
+  '8544':{cat:'Cabos e fios elétricos',  cst:'00',st:false,red:0,isen:false,pisCofins:'06'},
+  '8536':{cat:'Aparelhos de comutação',  cst:'00',st:false,red:0,isen:false,pisCofins:'01'},
+  '8703':{cat:'Automóveis passageiro',   cst:'10',st:true, red:0,isen:false,pisCofins:'01'},
+  '8704':{cat:'Caminhões / camionetes',  cst:'10',st:true, red:0,isen:false,pisCofins:'01'},
+  '8711':{cat:'Motocicletas',            cst:'10',st:true, red:0,isen:false,pisCofins:'01'},
+  '2203':{cat:'Cervejas de malte',       cst:'10',st:true, red:0,isen:false,pisCofins:'01'},
+  '2204':{cat:'Vinhos de uvas frescas',  cst:'10',st:true, red:0,isen:false,pisCofins:'01'},
+  '2208':{cat:'Aguardentes / destilados',cst:'10',st:true, red:0,isen:false,pisCofins:'01'},
+  '3303':{cat:'Perfumes e águas-de-col.',cst:'10',st:true, red:0,isen:false,pisCofins:'01'},
+  '3304':{cat:'Cosméticos e maquiagem',  cst:'10',st:true, red:0,isen:false,pisCofins:'01'},
+  '3305':{cat:'Xampus / condicionadores',cst:'10',st:true, red:0,isen:false,pisCofins:'01'},
+  '4901':{cat:'Livros e brochuras',      cst:'40',st:false,red:0,isen:true, pisCofins:'07'},
+  '9403':{cat:'Móveis e suas partes',    cst:'00',st:false,red:0,isen:false,pisCofins:'01'},
+  '9503':{cat:'Brinquedos / jogos',      cst:'00',st:false,red:0,isen:false,pisCofins:'01'},
+};
+function getNcmFiscal(ncm) {
+  if (!ncm || ncm === '—') return null;
+  const n = String(ncm).replace(/\D/g,'');
+  return NCM_FISCAL[n.slice(0,4)] || NCM_FISCAL[n.slice(0,2)] || null;
+}
+const CST_ICMS_LABEL = {
+  '00':'00 — Tributação integral','10':'10 — Tributado + ICMS-ST',
+  '20':'20 — Red. base de cálculo','30':'30 — Isento + ICMS-ST',
+  '40':'40 — Isento','41':'41 — Não tributado','50':'50 — Suspensão',
+  '60':'60 — ICMS-ST já recolhido','70':'70 — Red. base + ST','90':'90 — Outros',
+};
+const CST_PIS_LABEL = {
+  '01':'01 — Alíq. básica','02':'02 — Alíq. diferenciada','03':'03 — Alíq. por unidade',
+  '04':'04 — Monofásico','06':'06 — Alíq. zero','07':'07 — Isento',
+  '08':'08 — Sem incidência','09':'09 — Suspensão',
+};
+// Motivo da desoneração do ICMS (tabela oficial da NF-e — tag motDesICMS)
+const MOT_DESONERACAO_LABEL = {
+  '1':'Táxi', '3':'Produtor Agropecuário', '4':'Frotista/Locadora',
+  '5':'Diplomático/Consular', '6':'Utilitários/Motocicletas — Amazônia Ocidental e ALC',
+  '7':'SUFRAMA', '8':'Venda a Órgão Público', '9':'Outros',
+  '10':'Deficiente Condutor', '11':'Deficiente Não Condutor', '12':'Produtor Agropecuário',
+  '16':'Olimpíadas Rio 2016', '90':'Outros',
+};
+
+/* ════════════════════════════════════════════════
+   AUTOMAÇÃO FISCAL — ICMS DE ENTRADA (ESTADO DO ACRE)
+   NCM + UF de origem → ICMS-ST ou Antecipação Parcial
+════════════════════════════════════════════════ */
+const ICMS_AC_ALIQUOTA_INTERNA = 19; // alíquota interna padrão do ICMS no Acre
+
+// UFs de origem cuja alíquota interestadual para destino no Acre (Região Norte) é 7%
+// (Sul e Sudeste, exceto Espírito Santo — Resolução do Senado nº 22/89)
+const UF_ALIQ_INTERESTADUAL_7 = ['SP', 'RJ', 'MG', 'PR', 'SC', 'RS'];
+
+/**
+ * Determina a alíquota interestadual aplicável (Resolução Senado 22/89 e 13/2012)
+ * com base na UF de origem do fornecedor e no código <orig> do item na NF-e.
+ * - 4%:  mercadoria importada ou com conteúdo de importação > 40% (orig 1,2,3,6,7,8), qualquer UF
+ * - 7%:  origem Sul/Sudeste exceto ES
+ * - 12%: origem Norte, Nordeste, Centro-Oeste, DF e ES
+ */
+function getAliquotaInterestadualAC(ufOrigem, origCodigo) {
+  const orig = Number(origCodigo);
+  if ([1, 2, 3, 6, 7, 8].includes(orig)) return 4;
+  if (UF_ALIQ_INTERESTADUAL_7.includes((ufOrigem || '').toUpperCase())) return 7;
+  return 12;
+}
+
+// Normaliza NCM/CEST removendo pontos e qualquer caractere não numérico,
+// para garantir que "0400100", "04.001.00" e "04.001-00" sejam tratados como o mesmo código.
+function normalizeDigits(v) { return String(v || '').replace(/\D/g, ''); }
+
+// Formata CEST normalizado (7 dígitos) no padrão oficial XX.XXX.XX para exibição.
+function formatCest(v) {
+  const d = normalizeDigits(v);
+  if (d.length !== 7) return v || '';
+  return `${d.slice(0,2)}.${d.slice(2,5)}.${d.slice(5,7)}`;
+}
+
+// CEST oficial por NCM, conforme Instrução Normativa DIAT nº 1/2023 (Anexo I — Convênio ICMS 142/2018).
+// Armazenado sem pontuação (dígitos puros) — a formatação para exibição é feita por formatCest().
+// Usado para consultar se o NCM tem CEST cadastrado na normativa, mesmo que a nota não traga a tag <CEST>.
+const ICMS_AC_CEST_NCM = {
+  '2401':'0400100', '2402':'0400100', '2403':'0400200', // cigarros/tabaco
+  '2523':'0500100',                                      // cimento
+  '3924':'1400601',                                      // utensílios de mesa/cozinha de plástico (talheres, copos, etc.)
+  '3923':'2006300',                                      // CEST 20.063.00 "Mamadeiras" (item 63.0, Anexo I) — aplicado ao NCM 3923 por decisão do usuário
+};
+
+// NCM (4 dígitos) sujeitos a Substituição Tributária no Acre, com alíquota efetiva de ST
+// por faixa de alíquota interestadual de origem (12% / 7% / 4%).
+// Fonte oficial confirmada (Instrução Normativa DIAT nº 1/2023, Anexo I): 2401-2403, 2523.
+// Demais NCMs usam um valor único estimado (mesma alíquota independente da origem) — ver observação.
+const ICMS_AC_ST_NCM = {
+  '2401':{12:44.57,7:52.79,4:57.71}, '2402':{12:44.57,7:52.79,4:57.71}, '2403':{12:44.57,7:52.79,4:57.71}, // cigarros/tabaco — oficial
+  '2523':{12:12.77,7:19.18,4:23.02}, // cimento — oficial
+  '3923':{12:17.18,7:23.84,4:27.83}, // CEST 20.063.00 "Mamadeiras" — oficial (aplicado ao NCM 3923 por decisão do usuário)
+  '2202':25, '2203':25, '2204':25, '2208':25,   // bebidas (estimado)
+  '3303':36, '3304':36, '3305':36,              // perfumaria/cosméticos (estimado)
+  '3208':30, '3209':30,                         // tintas e vernizes (estimado)
+  '4011':25,                                    // pneus (estimado)
+  '8517':30, '8528':30, '8471':30,              // eletrônicos/informática (estimado)
+  '8703':25,                                     // veículos (estimado)
+  '2710':30,                                     // combustíveis/lubrificantes (estimado)
+};
+
+/**
+ * Determina o tipo e a alíquota de ICMS de entrada (ST ou Antecipação Parcial)
+ * de acordo com a normativa do Estado do Acre, a partir do NCM, da UF de origem,
+ * do código <orig> do item (indica se é importado) e do CEST.
+ *
+ * O CEST é consultado em duas fontes, nesta ordem de prioridade:
+ *  1. CEST informado na própria nota (cestXml) — dado real, prevalece;
+ *  2. Consulta do NCM contra a tabela oficial da IN DIAT nº 1/2023 (ICMS_AC_CEST_NCM) —
+ *     usada quando a nota não trouxe o CEST, mas o NCM está cadastrado na normativa.
+ * Se nenhuma das duas fontes indicar CEST, não há base legal para ST/Antecipação.
+ *
+ * Operações internas (origem AC) não geram ST/antecipação.
+ */
+function getIcmsEntradaAcre(ncm, ufOrigem, origCodigo, cestXml) {
+  // Normaliza removendo pontos/traços, para casar "2402", "2402.10.00" e "24021000" sem diferença,
+  // e "0400100" com "04.001.00" da mesma forma.
+  const n        = normalizeDigits(ncm);
+  const cestXmlN = normalizeDigits(cestXml) || null;
+  const uf       = (ufOrigem || '').toUpperCase();
+
+  if (!n) return { tipo: 'nenhum', aliquota: 0, aliquotaInterestadual: null, cest: null, cestFonte: null, cestDivergente: false };
+  if (uf === 'AC' || !uf) return { tipo: 'nenhum', aliquota: 0, aliquotaInterestadual: null, cest: null, cestFonte: null, cestDivergente: false }; // operação interna ou UF não informada
+
+  // Consulta o NCM na tabela oficial da normativa, independente do que veio na nota
+  const cestNormativaN = ICMS_AC_CEST_NCM[n.slice(0, 4)] || null;
+  const cestN      = cestXmlN || cestNormativaN;
+  const cestFonte  = cestXmlN ? 'xml' : (cestNormativaN ? 'normativa' : null);
+  // Sinaliza se a nota trouxe um CEST diferente do que consta na normativa para esse NCM
+  const cestDivergente = !!(cestXmlN && cestNormativaN && cestXmlN !== cestNormativaN);
+  const cest = formatCest(cestN);
+
+  if (!cestN) return { tipo: 'nenhum', aliquota: 0, aliquotaInterestadual: null, cest: null, cestFonte: null, cestDivergente: false };
+
+  const aliqInter = getAliquotaInterestadualAC(uf, origCodigo);
+
+  // 1. Verifica se o NCM está sujeito a Substituição Tributária no Acre (tem MVA/multiplicador cadastrado)
+  const stEntry = ICMS_AC_ST_NCM[n.slice(0, 4)];
+  if (stEntry != null) {
+    const aliquota = typeof stEntry === 'object' ? (stEntry[aliqInter] ?? stEntry[12]) : stEntry;
+    return { tipo: 'ST', aliquota, aliquotaInterestadual: aliqInter, cest, cestFonte, cestDivergente };
+  }
+
+  // 2. Se isento conforme banco fiscal, não há antecipação
+  const fiscal = getNcmFiscal(n);
+  if (fiscal?.isen) return { tipo: 'nenhum', aliquota: 0, aliquotaInterestadual: aliqInter, cest, cestFonte, cestDivergente };
+
+  // 3. Caso contrário, antecipação parcial = diferencial entre alíquota interna AC e interestadual de origem
+  const diferencial = Math.max(0, ICMS_AC_ALIQUOTA_INTERNA - aliqInter);
+  return { tipo: 'antecipacao', aliquota: diferencial, aliquotaInterestadual: aliqInter, cest, cestFonte, cestDivergente };
+}
+
+const DEMO_PRODUTOS = [
+  { descricao:'Cabo Cat6 5m',              ncm:'85444299', qCom:50, vUnCom:12.90,  ipi: getIpiFromNcm('85444299') },
+  { descricao:'Roteador Wi-Fi Dual Band',  ncm:'85176200', qCom:10, vUnCom:189.90, ipi: getIpiFromNcm('85176200') },
+  { descricao:'Switch 8 Portas 10/100',    ncm:'85176200', qCom:8,  vUnCom:95.00,  ipi: getIpiFromNcm('85176200') },
+  { descricao:'Conector RJ45 Cat6 (cx100)',ncm:'85366990', qCom:20, vUnCom:38.50,  ipi: getIpiFromNcm('85366990') },
+];
+
+const SN_TABELAS = {
+  I:   [{ate:180000,nom:.04,ded:0},{ate:360000,nom:.073,ded:5940},{ate:720000,nom:.095,ded:13860},{ate:1800000,nom:.107,ded:22500},{ate:3600000,nom:.143,ded:87300},{ate:4800000,nom:.19,ded:378000}],
+  II:  [{ate:180000,nom:.045,ded:0},{ate:360000,nom:.078,ded:5940},{ate:720000,nom:.100,ded:13860},{ate:1800000,nom:.112,ded:22500},{ate:3600000,nom:.147,ded:85500},{ate:4800000,nom:.30,ded:720000}],
+  III: [{ate:180000,nom:.060,ded:0},{ate:360000,nom:.112,ded:9360},{ate:720000,nom:.135,ded:17640},{ate:1800000,nom:.160,ded:35640},{ate:3600000,nom:.210,ded:125640},{ate:4800000,nom:.33,ded:648000}],
+  IV:  [{ate:180000,nom:.045,ded:0},{ate:360000,nom:.090,ded:8100},{ate:720000,nom:.102,ded:12420},{ate:1800000,nom:.140,ded:39780},{ate:3600000,nom:.220,ded:183780},{ate:4800000,nom:.33,ded:828000}],
+  V:   [{ate:180000,nom:.155,ded:0},{ate:360000,nom:.180,ded:4500},{ate:720000,nom:.195,ded:9900},{ate:1800000,nom:.205,ded:17100},{ate:3600000,nom:.230,ded:62100},{ate:4800000,nom:.305,ded:540000}],
+};
+const LP = { pis:.0065, cofins:.03, icms:.17, irpj_base:.08, irpj_rate:.15, csll_base:.12, csll_rate:.09 };
+const LR = { pis:.0165, cofins:.076, icms:.17 };
+
+/* ════════════════════════════════════════════════
+   STATE
+════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════
+   STRIPE — LINKS POR REGIME (crie no dashboard.stripe.com)
+════════════════════════════════════════════════ */
+// Link único para todos os regimes — R$ 100,00/mês
+const STRIPE_LINK_UNIVERSAL = 'https://buy.stripe.com/dRm28q8kfdt7bufa9d00004';
+const STRIPE_LINKS = { MEI: STRIPE_LINK_UNIVERSAL, SN: STRIPE_LINK_UNIVERSAL, LP: STRIPE_LINK_UNIVERSAL, LR: STRIPE_LINK_UNIVERSAL };
+
+// WhatsApp de suporte (altere o número abaixo)
+const WHATSAPP_NUMERO = '5519989765398';
+
+const PLANOS = {
+  MEI: {
+    nome: 'Licença GestorFiscal PRO',
+    preco: 'R$ 100,00',
+    periodo: '/mês',
+    cor: 'emerald',
+    icone: 'landmark',
+    desc: 'MEI — Microempreendedor Individual',
+    features: ['Upload ilimitado de XMLs de NF-e', 'Precificação automática por regime', 'Banco NCM com CST/ST/isenção', 'Tabela TIPI integrada (IPI)', 'Histórico de análises salvo', 'Relatório para impressão'],
+  },
+  SN: {
+    nome: 'Licença GestorFiscal PRO',
+    preco: 'R$ 100,00',
+    periodo: '/mês',
+    cor: 'emerald',
+    icone: 'landmark',
+    desc: 'Simples Nacional — Anexo I ao V',
+    features: ['Upload ilimitado de XMLs de NF-e', 'Cálculo por Anexo I–V automático', 'Banco NCM com CST/ST/isenção', 'Tabela TIPI integrada (IPI)', 'Histórico de análises salvo', 'Relatório para impressão'],
+  },
+  LP: {
+    nome: 'Licença GestorFiscal PRO',
+    preco: 'R$ 100,00',
+    periodo: '/mês',
+    cor: 'emerald',
+    icone: 'landmark',
+    desc: 'Lucro Presumido',
+    features: ['Upload ilimitado de XMLs de NF-e', 'Crédito ICMS na entrada', 'PIS/COFINS cumulativo', 'Banco NCM com CST/ST/isenção', 'Histórico de análises salvo', 'Relatório para impressão'],
+  },
+  LR: {
+    nome: 'Licença GestorFiscal PRO',
+    preco: 'R$ 100,00',
+    periodo: '/mês',
+    cor: 'emerald',
+    icone: 'landmark',
+    desc: 'Lucro Real',
+    features: ['Upload ilimitado de XMLs de NF-e', 'PIS/COFINS não-cumulativo', 'Crédito PIS/COFINS na entrada', 'Banco NCM com CST/ST/isenção', 'Histórico de análises salvo', 'Relatório para impressão'],
+  },
+};
+
+const REGIME_LABEL = { MEI:'MEI', SN:'Simples Nacional', LP:'Lucro Presumido', LR:'Lucro Real' };
+
+/* ════ variáveis globais ════ */
+let sb = null;
+let currentUser = null;
+let empresaData = {};
+let isDemo = false;
+let produtos = [];
+let currentXmlName = '';
+let statusPollTimer = null;
+let isAdmin = false;
+let passwordRecoveryMode = false;
+let currentStep = 1;
+let signupRegime = '';
+let activeTab = 0;
+
+/* ════════════════════════════════════════════════
+   INIT
+════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', async () => {
+  lucide.createIcons();
+
+  try {
+    sb = window.supabase.createClient(GF_SB_URL, GF_SB_KEY);
+
+    // ── Verifica PRIMEIRO se é um link de recuperação de senha ──
+    // Supabase envia o token no hash: #access_token=...&type=recovery
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    if (hashParams.get('type') === 'recovery') {
+      passwordRecoveryMode = true;
+      history.replaceState({}, '', window.location.pathname + window.location.search);
+      showResetScreen();
+      return; // Para o fluxo normal de login
+    }
+
+    // ── Também captura via onAuthStateChange (fallback) ──
+    sb.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY' && !passwordRecoveryMode) {
+        passwordRecoveryMode = true;
+        showResetScreen();
+      }
+    });
+
+    const { data: { session } } = await sb.auth.getSession();
+    if (session && !passwordRecoveryMode) {
+      await afterLogin(session.user);
+    }
+  } catch(e) {
+    console.warn('Supabase init error:', e);
+  }
+
+  // Drag & drop XML
+  const area = document.getElementById('xml-upload-area');
+  if (area) {
+    area.addEventListener('dragover', e => { e.preventDefault(); area.classList.add('border-emerald-500'); });
+    area.addEventListener('dragleave', () => area.classList.remove('border-emerald-500'));
+    area.addEventListener('drop', e => { e.preventDefault(); area.classList.remove('border-emerald-500'); if (e.dataTransfer.files[0]) processXmlFile(e.dataTransfer.files[0]); });
+  }
+});
+
+/* ════════════════════════════════════════════════
+   AUTH UI
+════════════════════════════════════════════════ */
+function setAuthMode(mode) {
+  const isLogin   = mode === 'login';
+  const isSignup  = mode === 'signup';
+  const isRecover = mode === 'recover';
+
+  document.getElementById('tab-login-btn').className = isLogin
+    ? 'flex-1 py-2 text-xs font-bold rounded-lg bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm transition-all'
+    : 'flex-1 py-2 text-xs font-bold rounded-lg text-slate-500 dark:text-slate-400 transition-all';
+  document.getElementById('tab-signup-btn').className = isSignup
+    ? 'flex-1 py-2 text-xs font-bold rounded-lg bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm transition-all'
+    : 'flex-1 py-2 text-xs font-bold rounded-lg text-slate-500 dark:text-slate-400 transition-all';
+
+  document.getElementById('panel-login').classList.toggle('hidden',  !isLogin);
+  document.getElementById('panel-signup').classList.toggle('hidden', !isSignup);
+  document.getElementById('panel-recover').classList.toggle('hidden', !isRecover);
+  document.getElementById('auth-tabs').classList.toggle('hidden', isRecover);
+
+  if (isSignup) goStep(1);
+  if (isRecover) setTimeout(() => document.getElementById('recover-email')?.focus(), 100);
+}
+
+function showLogin() {
+  document.getElementById('app-screen').classList.add('hidden');
+  document.getElementById('login-screen').classList.remove('hidden');
+}
+
+/* ── STEP NAVIGATION ── */
+function goStep(n) {
+  // Validate before advancing
+  if (n > currentStep) {
+    if (currentStep === 1) {
+      const name = document.getElementById('s1-name').value.trim();
+      const email = document.getElementById('s1-email').value.trim();
+      const pass = document.getElementById('s1-password').value;
+      if (!name) { toast('Informe seu nome.', 'warning'); return; }
+      if (!email || !email.includes('@')) { toast('E-mail inválido.', 'warning'); return; }
+      if (pass.length < 6) { toast('Senha deve ter ao menos 6 caracteres.', 'warning'); return; }
+    }
+    if (currentStep === 2) {
+      const empresa = document.getElementById('s2-empresa').value.trim();
+      if (!empresa) { toast('Informe a razão social.', 'warning'); return; }
+    }
+  }
+
+  // Update dots and lines
+  for (let i = 1; i <= 3; i++) {
+    const dot = document.getElementById(`sdot-${i}`);
+    dot.className = 'step-dot ' + (i < n ? 'done' : i === n ? 'active' : 'pending');
+    if (i < 3) {
+      const line = document.getElementById(`sline-${i}`);
+      line.className = 'step-line ' + (i < n ? 'done' : '');
+    }
+    document.getElementById(`step-${i}`).classList.toggle('hidden', i !== n);
+  }
+  const labels = ['', 'Passo 1 de 3 — Seus dados de acesso', 'Passo 2 de 3 — Sua empresa', 'Passo 3 de 3 — Regime tributário'];
+  document.getElementById('step-label').textContent = labels[n];
+  currentStep = n;
+  lucide.createIcons();
+}
+
+function selectRegime(r) {
+  signupRegime = r;
+  ['MEI','SN','LP','LR'].forEach(x => document.getElementById('card-' + x).classList.remove('selected'));
+  document.getElementById('card-' + r).classList.add('selected');
+  document.getElementById('sn-extras').classList.toggle('hidden', r !== 'SN');
+}
+
+/* ════════════════════════════════════════════════
+   AUTH ACTIONS
+════════════════════════════════════════════════ */
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass  = document.getElementById('login-password').value;
+  if (!email || !pass) { toast('Preencha e-mail e senha.', 'warning'); return; }
+
+  setBtnLoading('btn-login', 'icon-login', 'label-login', true, 'Entrando...');
+
+  try {
+    if (!sb) throw new Error('Serviço indisponível. Use o servidor local (.bat).');
+    const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+    if (error) throw error;
+    await afterLogin(data.user);
+    toast('Bem-vindo de volta!', 'success');
+  } catch(e) {
+    setBtnLoading('btn-login', 'icon-login', 'label-login', false);
+    const msg = translateAuthError(e.message || String(e));
+    toast(msg, 'error');
+  }
+}
+
+async function doDemo() {
+  isDemo = true;
+  currentUser = { id: 'demo', email: DEMO_EMAIL };
+  empresaData = { nome: 'Empresa Demo', regime: 'SN', sn_anexo: 'I', sn_rba: 360000 };
+  loadApp(true);
+  toast('Modo demo ativado! Explore à vontade.', 'success');
+}
+
+async function doSignup() {
+  if (!signupRegime) { toast('Selecione o regime tributário.', 'warning'); return; }
+
+  const name     = document.getElementById('s1-name').value.trim();
+  const email    = document.getElementById('s1-email').value.trim();
+  const telefone = document.getElementById('s1-telefone').value.trim();
+  const pass     = document.getElementById('s1-password').value;
+  const empresa  = document.getElementById('s2-empresa').value.trim();
+  const cnpj     = document.getElementById('s2-cnpj').value.trim();
+  const uf       = document.getElementById('s2-uf').value;
+  const cidade   = document.getElementById('s2-cidade').value.trim();
+  const snAnexo  = document.getElementById('sn-anexo').value;
+  const snRba    = parseFloat(document.getElementById('sn-rba').value) || 360000;
+
+  setBtnLoading('btn-signup', 'icon-signup', 'label-signup', true, 'Criando conta...');
+
+  try {
+    if (!sb) throw new Error('Serviço indisponível. Use o servidor local (.bat).');
+    const { data, error } = await sb.auth.signUp({ email, password: pass, options: { data: { nome: name } } });
+    if (error) throw error;
+
+    const uid = data.user?.id;
+    if (uid) {
+      await sb.from('empresas').insert({
+        user_id: uid, nome: empresa, cnpj, uf, cidade, telefone,
+        regime: signupRegime, sn_anexo: snAnexo, sn_rba: snRba
+      });
+    }
+
+    setBtnLoading('btn-signup', 'icon-signup', 'label-signup', false);
+
+    const leadData = { nome: name, email, empresa, telefone, cnpj, uf, cidade, regime: signupRegime, snAnexo, snRba };
+
+    // WhatsApp webhook (não bloqueia o fluxo)
+    sendWhatsAppLead(leadData);
+
+    // Mostrar modal de boas-vindas
+    mostrarModalPosCadastro(leadData);
+
+    // Login imediato
+    const { data: d2, error: e2 } = await sb.auth.signInWithPassword({ email, password: pass });
+    if (!e2 && d2?.user) await afterLogin(d2.user);
+  } catch(e) {
+    setBtnLoading('btn-signup', 'icon-signup', 'label-signup', false);
+    toast(translateAuthError(e.message || String(e)), 'error');
+  }
+}
+
+async function afterLogin(user) {
+  currentUser = user;
+  isDemo = false;
+
+  try {
+    const { data } = await sb.from('empresas').select('*').eq('user_id', user.id).single();
+    if (data) empresaData = data;
+  } catch(e) { empresaData = {}; }
+
+  // Verifica se é admin
+  try {
+    const { data: adminRow } = await sb.from('admins').select('id').eq('email', user.email).maybeSingle();
+    isAdmin = !!adminRow;
+  } catch(e) { isAdmin = false; }
+
+  // Checa se voltou de pagamento Stripe
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('payment_success') === '1') {
+    history.replaceState({}, '', window.location.pathname);
+    empresaData.status = 'pending_payment'; // será atualizado pelo webhook
+    showPaymentVerifying();
+    return;
+  }
+
+  routeByStatus();
+}
+
+function routeByStatus() {
+  // Admins sempre vão direto pro app
+  if (isAdmin) { loadApp(false); return; }
+
+  const status = empresaData.status || 'pending_payment';
+  hideAllScreens();
+  if (status === 'active') {
+    loadApp(false);
+  } else {
+    // pending ou pending_payment → vai direto para pagamento
+    showPaymentScreen();
+  }
+}
+
+function hideAllScreens() {
+  ['login-screen','reset-screen','pending-screen','payment-screen','admin-screen','app-screen'].forEach(id => {
+    document.getElementById(id)?.classList.add('hidden');
+  });
+  stopStatusPolling();
+}
+
+/* ─── RECUPERAÇÃO DE SENHA ────────────────────── */
+function showResetScreen() {
+  hideAllScreens();
+  document.getElementById('reset-screen').classList.remove('hidden');
+  lucide.createIcons();
+  setTimeout(() => document.getElementById('reset-password')?.focus(), 200);
+}
+
+async function doSendRecovery() {
+  const email = document.getElementById('recover-email').value.trim();
+  if (!email) { toast('Digite seu e-mail.', 'warning'); return; }
+  setBtnLoading('btn-recover', 'icon-recover', 'label-recover', true, 'Enviando...');
+  try {
+    const { error } = await sb.auth.resetPasswordForEmail(email, {
+      redirectTo: 'https://delta-1.github.io/GESTORFISCALPRO/',
+    });
+    if (error) throw error;
+    toast('Link enviado! Verifique seu e-mail.', 'success');
+    setBtnLoading('btn-recover', 'icon-recover', 'label-recover', false);
+    setAuthMode('login');
+  } catch(e) {
+    toast(translateAuthError(e.message || String(e)), 'error');
+    setBtnLoading('btn-recover', 'icon-recover', 'label-recover', false);
+  }
+}
+
+async function doResetPassword() {
+  const pass    = document.getElementById('reset-password').value;
+  const confirm = document.getElementById('reset-password-confirm').value;
+  if (!pass || pass.length < 6) { toast('A senha deve ter no mínimo 6 caracteres.', 'warning'); return; }
+  if (pass !== confirm)          { toast('As senhas não coincidem.', 'warning'); return; }
+
+  setBtnLoading('btn-reset', 'icon-reset', 'label-reset', true, 'Salvando...');
+  try {
+    const { error } = await sb.auth.updateUser({ password: pass });
+    if (error) throw error;
+
+    // Limpa sessão e estado de recovery
+    passwordRecoveryMode = false;
+    await sb.auth.signOut();
+
+    // Mostra sucesso e vai para login limpo
+    hideAllScreens();
+    document.getElementById('login-screen').classList.remove('hidden');
+    setAuthMode('login');
+    document.getElementById('login-email').value = '';
+    document.getElementById('login-password').value = '';
+    lucide.createIcons();
+    toast('✅ Senha redefinida! Faça login com sua nova senha.', 'success');
+  } catch(e) {
+    toast(translateAuthError(e.message || String(e)), 'error');
+    setBtnLoading('btn-reset', 'icon-reset', 'label-reset', false);
+  }
+}
+
+/* ─── TELA AGUARDANDO ─────────────────────────── */
+function showPendingScreen() {
+  hideAllScreens();
+  const scr = document.getElementById('pending-screen');
+  scr.classList.remove('hidden');
+  document.getElementById('pend-empresa').textContent = empresaData.nome || currentUser?.email || '—';
+  document.getElementById('pend-regime').textContent  = REGIME_LABEL[empresaData.regime] || empresaData.regime || '—';
+  lucide.createIcons();
+  startStatusPolling();
+}
+
+/* ─── TELA PAGAMENTO ──────────────────────────── */
+function showPaymentScreen() {
+  hideAllScreens();
+  const scr = document.getElementById('payment-screen');
+  scr.classList.remove('hidden');
+  renderPaymentCard();
+  lucide.createIcons();
+  startStatusPolling(); // caso o webhook já tenha ativado
+}
+
+function showPaymentVerifying() {
+  hideAllScreens();
+  const scr = document.getElementById('payment-screen');
+  scr.classList.remove('hidden');
+  renderPaymentCard();
+  document.getElementById('payment-verifying').classList.remove('hidden');
+  document.getElementById('btn-pay').classList.add('hidden');
+  lucide.createIcons();
+  startStatusPolling();
+}
+
+function renderPaymentCard() {
+  const regime = empresaData.regime || 'SN';
+  const plano  = PLANOS[regime] || PLANOS.SN;
+  const cores  = {
+    emerald: 'bg-emerald-500', blue: 'bg-blue-500',
+    violet:  'bg-violet-500',  rose: 'bg-rose-500',
+  };
+  const bgCor = cores[plano.cor] || 'bg-emerald-500';
+  document.getElementById('payment-plan-card').innerHTML = `
+    <div class="flex items-center gap-3 mb-4">
+      <div class="w-10 h-10 rounded-xl ${bgCor} flex items-center justify-center shrink-0">
+        <i data-lucide="${plano.icone}" class="w-5 h-5 text-white"></i>
+      </div>
+      <div>
+        <div class="text-base font-extrabold text-slate-800 dark:text-white">${plano.nome}</div>
+        <div class="text-xs text-slate-400">${plano.desc}</div>
+      </div>
+    </div>
+    <div class="flex items-end gap-1 mb-4">
+      <span class="text-3xl font-extrabold text-slate-800 dark:text-white">${plano.preco}</span>
+      <span class="text-sm text-slate-400 mb-1">${plano.periodo}</span>
+    </div>
+    <ul class="space-y-2">
+      ${plano.features.map(f => `
+        <li class="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
+          <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-500 shrink-0"></i>
+          ${f}
+        </li>`).join('')}
+    </ul>`;
+}
+
+function goToStripe() {
+  const regime = empresaData.regime || 'SN';
+  const link   = STRIPE_LINKS[regime] || STRIPE_LINKS.SN;
+  if (link.includes('COLOQUE_LINK')) {
+    toast('Links do Stripe ainda não configurados. Contate o administrador.', 'warning');
+    return;
+  }
+  // client_reference_id é passado via query string — Stripe injeta no checkout.session.completed
+  window.open(`${link}?client_reference_id=${currentUser.id}`, '_blank');
+  document.getElementById('payment-verifying').classList.remove('hidden');
+  document.getElementById('btn-pay').classList.add('opacity-50', 'pointer-events-none');
+  document.getElementById('btn-pay').innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 spinner"></i> Aguardando pagamento…';
+  lucide.createIcons();
+  startStatusPolling();
+}
+
+/* ─── POLLING DE STATUS ───────────────────────── */
+function startStatusPolling() {
+  stopStatusPolling();
+  statusPollTimer = setInterval(() => checkUserStatus(false), 15000);
+}
+
+function stopStatusPolling() {
+  if (statusPollTimer) { clearInterval(statusPollTimer); statusPollTimer = null; }
+}
+
+async function checkUserStatus(manual = false) {
+  if (!currentUser || isDemo) return;
+  try {
+    const { data } = await sb.from('empresas').select('status').eq('user_id', currentUser.id).single();
+    if (!data) return;
+    if (data.status !== (empresaData.status || 'pending')) {
+      empresaData.status = data.status;
+      stopStatusPolling();
+      if (data.status === 'active') {
+        const { data: full } = await sb.from('empresas').select('*').eq('user_id', currentUser.id).single();
+        if (full) empresaData = full;
+        toast('Acesso liberado! Bem-vindo ao GestorFiscal PRO 🎉', 'success');
+        loadApp(false);
+      } else if (data.status === 'pending_payment') {
+        toast('Conta ativada! Escolha seu plano para continuar.', 'success');
+        showPaymentScreen();
+      }
+    } else if (manual) {
+      toast('Status verificado — ainda aguardando.', 'info');
+    }
+  } catch(e) {}
+}
+
+/* ─── PAINEL ADMIN ────────────────────────────── */
+function openAdminPanel() {
+  document.getElementById('admin-screen').classList.remove('hidden');
+  loadAdminData();
+  lucide.createIcons();
+}
+
+function closeAdminPanel() {
+  document.getElementById('admin-screen').classList.add('hidden');
+}
+
+async function loadAdminData() {
+  try {
+    const { data } = await sb.from('empresas').select('*').order('created_at', { ascending: false });
+    if (!data) return;
+    const pending = data.filter(e => e.status === 'pending').length;
+    const pmt     = data.filter(e => e.status === 'pending_payment').length;
+    const active  = data.filter(e => e.status === 'active').length;
+    document.getElementById('admin-stats').innerHTML = `
+      <div class="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-2xl p-4 text-center">
+        <div class="text-2xl font-extrabold text-amber-500">${pending}</div>
+        <div class="text-[11px] text-slate-400 mt-1">Aguardando</div>
+      </div>
+      <div class="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-2xl p-4 text-center">
+        <div class="text-2xl font-extrabold text-blue-500">${pmt}</div>
+        <div class="text-[11px] text-slate-400 mt-1">Aguard. Pag.</div>
+      </div>
+      <div class="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-2xl p-4 text-center">
+        <div class="text-2xl font-extrabold text-emerald-500">${active}</div>
+        <div class="text-[11px] text-slate-400 mt-1">Ativos</div>
+      </div>`;
+    window._adminAllUsers = data;
+    renderAdminUsers('pending');
+    lucide.createIcons();
+  } catch(e) { toast('Erro ao carregar dados admin.', 'error'); }
+}
+
+function renderAdminUsers(filter) {
+  ['pending','pmt','active','all'].forEach(f => {
+    const btn = document.getElementById('filter-' + f);
+    if (btn) btn.className = btn.className.replace(/bg-\w+-500 text-white/g, 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700');
+  });
+  const activeBtn = document.getElementById('filter-' + (filter === 'pending_payment' ? 'pmt' : filter));
+  if (activeBtn) activeBtn.className = activeBtn.className.replace('bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700', 'bg-emerald-500 text-white');
+
+  const all   = window._adminAllUsers || [];
+  const users = filter === 'all' ? all : all.filter(e => e.status === filter);
+
+  const STATUS_STYLE = {
+    pending:         'bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400',
+    pending_payment: 'bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400',
+    active:          'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400',
+  };
+  const STATUS_LABEL = { pending:'Aguardando', pending_payment:'Aguard. Pagamento', active:'Ativo' };
+
+  const list = document.getElementById('admin-users-list');
+  if (!users.length) {
+    list.innerHTML = '<p class="text-center text-slate-400 text-sm py-10">Nenhum usuário neste filtro.</p>';
+    return;
+  }
+
+  list.innerHTML = users.map(u => `
+    <div class="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex items-center justify-between gap-3">
+      <div class="min-w-0">
+        <div class="text-sm font-bold text-slate-700 dark:text-slate-200 truncate">${u.nome || '—'}</div>
+        <div class="text-[11px] text-slate-400 mt-0.5">${u.cnpj || 'CNPJ não informado'} · ${REGIME_LABEL[u.regime] || u.regime || '—'}</div>
+        <div class="mt-1.5 flex items-center gap-2 flex-wrap">
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${STATUS_STYLE[u.status] || ''}">${STATUS_LABEL[u.status] || u.status}</span>
+          <span class="text-[10px] text-slate-400">${new Date(u.created_at).toLocaleDateString('pt-BR')}</span>
+          ${u.paid_at ? `<span class="text-[10px] text-emerald-500 font-semibold">Pago ${new Date(u.paid_at).toLocaleDateString('pt-BR')}</span>` : ''}
+        </div>
+      </div>
+      <div class="flex flex-col gap-1.5 shrink-0 items-end">
+        ${u.status !== 'active' ? `
+          <button onclick="adminActivate('${u.user_id}','active')"
+            class="px-3 py-1.5 rounded-lg text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-all whitespace-nowrap">
+            ⚡ Ativar acesso
+          </button>` : `
+          <span class="text-[10px] text-emerald-500 font-bold mb-1">✓ Ativo</span>`}
+        ${u.status === 'active' ? `
+          <button onclick="adminActivate('${u.user_id}','pending_payment')"
+            class="px-3 py-1.5 rounded-lg text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-red-100 dark:hover:bg-red-950/50 hover:text-red-500 transition-all whitespace-nowrap">
+            🔒 Suspender
+          </button>` : ''}
+      </div>
+    </div>`).join('');
+  lucide.createIcons();
+}
+
+async function adminActivate(userId, newStatus) {
+  try {
+    const { error } = await sb.from('empresas').update({ status: newStatus }).eq('user_id', userId);
+    if (error) throw error;
+    toast('Status atualizado com sucesso!', 'success');
+    loadAdminData();
+  } catch(e) { toast('Erro: ' + e.message, 'error'); }
+}
+
+function loadApp(demo) {
+  hideAllScreens();
+  document.getElementById('app-screen').classList.remove('hidden');
+  document.getElementById('demo-banner').classList.toggle('hidden', !demo);
+  document.getElementById('xml-upload-area').classList.toggle('hidden', demo);
+  document.getElementById('demo-xml-lock').classList.toggle('hidden', !demo);
+  document.getElementById('btn-admin').classList.toggle('hidden', !isAdmin);
+
+  const empresa = empresaData.nome || currentUser?.email || '';
+  document.getElementById('user-empresa-label').textContent = empresa;
+  document.getElementById('pr-empresa').textContent = empresa;
+
+  applyEmpresaToConfig();
+  updateRegimeBadge();
+
+  if (demo) {
+    currentXmlName = 'demo_produtos.xml';
+    produtos = DEMO_PRODUTOS.map(p => ({...p}));
+    renderProducts();
+  }
+
+  loadHistory();
+  loadDespesas();
+  loadAliquotas();
+  lucide.createIcons();
+}
+
+async function doLogout() {
+  stopStatusPolling();
+  if (sb && !isDemo) await sb.auth.signOut().catch(()=>{});
+  currentUser = null; isDemo = false; empresaData = {}; produtos = []; isAdmin = false;
+  hideAllScreens();
+  document.getElementById('login-screen').classList.remove('hidden');
+  document.getElementById('products-section').classList.add('hidden');
+  setAuthMode('login');
+  lucide.createIcons();
+}
+
+/* ════════════════════════════════════════════════
+   CONFIG
+════════════════════════════════════════════════ */
+function applyEmpresaToConfig() {
+  const set = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.value = val; };
+  set('cfg-empresa', empresaData.nome || '');
+  set('cfg-cnpj', empresaData.cnpj || '');
+  set('cfg-regime', empresaData.regime || 'SN');
+  set('cfg-sn-anexo', empresaData.sn_anexo || 'I');
+  set('cfg-rba', empresaData.sn_rba || 360000);
+  set('cfg-drive', empresaData.drive_url || '');
+  onRegimeChange();
+}
+
+function onRegimeChange() {
+  const r = document.getElementById('cfg-regime').value;
+  document.getElementById('cfg-sn-block').classList.toggle('hidden', r !== 'SN');
+  empresaData.regime = r;
+  updateRegimeBadge();
+  // Regenerate calculo tab if visible
+  if (!document.getElementById('cfg-panel-calculo')?.classList.contains('hidden')) renderCalculoTab();
+}
+
+function updateRegimeBadge() {
+  const r = empresaData.regime || 'SN';
+  const labels = { MEI:'MEI', SN:'Simples Nacional', LP:'Lucro Presumido', LR:'Lucro Real' };
+  document.getElementById('regime-badge-text').textContent = labels[r] || r;
+  const det = document.getElementById('regime-details-badge');
+  if (r === 'SN') {
+    det.textContent = `Anexo ${empresaData.sn_anexo||'I'} · RBT12 R$ ${fmtNum(empresaData.sn_rba||360000)}`;
+    det.classList.remove('hidden');
+  } else { det.classList.add('hidden'); }
+  document.getElementById('pr-regime').textContent = labels[r] || r;
+}
+
+async function saveConfig() {
+  empresaData.nome     = document.getElementById('cfg-empresa').value.trim();
+  empresaData.cnpj     = document.getElementById('cfg-cnpj').value.trim();
+  empresaData.regime   = document.getElementById('cfg-regime').value;
+  empresaData.sn_anexo = document.getElementById('cfg-sn-anexo').value;
+  empresaData.sn_rba   = parseFloat(document.getElementById('cfg-rba').value) || 360000;
+  empresaData.drive_url = document.getElementById('cfg-drive').value.trim();
+
+  document.getElementById('user-empresa-label').textContent = empresaData.nome;
+  updateRegimeBadge();
+
+  if (!isDemo && sb && currentUser) {
+    try {
+      const { data: ex } = await sb.from('empresas').select('id').eq('user_id', currentUser.id).single();
+      if (ex?.id) {
+        await sb.from('empresas').update({ nome:empresaData.nome, cnpj:empresaData.cnpj, regime:empresaData.regime, sn_anexo:empresaData.sn_anexo, sn_rba:empresaData.sn_rba }).eq('id', ex.id);
+      } else {
+        await sb.from('empresas').insert({ user_id:currentUser.id, ...empresaData });
+      }
+    } catch(e) { console.warn(e); }
+  }
+  toast('Configurações salvas!', 'success');
+}
+
+function openDrive() {
+  const url = document.getElementById('cfg-drive').value.trim();
+  if (url) window.open(url, '_blank');
+  else toast('Cole o link do Google Drive primeiro.', 'warning');
+}
+
+/* ════════════════════════════════════════════════
+   XML PROCESSING
+════════════════════════════════════════════════ */
+function handleXmlFile(e) { if (e.target.files[0]) processXmlFile(e.target.files[0]); }
+
+function processXmlFile(file) {
+  if (isDemo) { toast('Upload bloqueado no modo demo.', 'warning'); return; }
+  if (!file.name.endsWith('.xml')) { toast('Selecione um arquivo .xml', 'error'); return; }
+  currentXmlName = file.name;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const xml = new DOMParser().parseFromString(e.target.result, 'text/xml');
+      const errs = xml.querySelector('parsererror');
+      if (errs) throw new Error('XML inválido');
+      const dets = [...xml.querySelectorAll('det')];
+      if (!dets.length) { toast('Nenhum item encontrado no XML.', 'warning'); return; }
+
+      // Frete total da NF-e (tag vFrete dentro de ICMSTot ou total)
+      const vFreteNota = parseFloat(
+        xml.querySelector('ICMSTot vFrete')?.textContent ||
+        xml.querySelector('total vFrete')?.textContent ||
+        xml.querySelector('vFrete')?.textContent || '0'
+      ) || 0;
+
+      // UF de origem do emitente (fornecedor) — usada na automação fiscal de ICMS entrada
+      const ufOrigem = (
+        xml.querySelector('emit enderEmit UF')?.textContent ||
+        xml.querySelector('emit UF')?.textContent || ''
+      ).trim().toUpperCase();
+
+      // Inscrição Suframa do destinatário — presente quando a operação tem benefício ZFM/ALC
+      const isufDestinatario = xml.querySelector('dest ISUF')?.textContent || null;
+
+      // Valor total dos produtos para distribuição proporcional do frete
+      const vTotalProd = dets.reduce((s, d) => {
+        return s + parseFloat(d.querySelector('vProd')?.textContent || 0);
+      }, 0);
+
+      produtos = dets.map(det => {
+        const ncm    = det.querySelector('NCM')?.textContent || '—';
+        const qCom   = parseFloat(det.querySelector('qCom')?.textContent || 1);
+        const vUnCom = parseFloat(det.querySelector('vUnCom')?.textContent || 0);
+        const vProd  = parseFloat(det.querySelector('vProd')?.textContent || 0);
+
+        // ICMS de entrada real, cobrado pelo fornecedor — direto do XML (grupo ICMSxx do item).
+        // Prioriza <pICMS> (alíquota); se ausente, calcula vICMS/vBC como fallback.
+        const pIcmsXml = parseFloat(det.querySelector('imposto ICMS pICMS')?.textContent || '');
+        const vIcmsXml = parseFloat(det.querySelector('imposto ICMS vICMS')?.textContent || 0) || 0;
+        const vBcXml   = parseFloat(det.querySelector('imposto ICMS vBC')?.textContent || 0) || 0;
+        const icmsEntradaPct = !isNaN(pIcmsXml) ? pIcmsXml : (vBcXml > 0 ? (vIcmsXml / vBcXml) * 100 : null);
+
+        // Desconto comercial do item (vDesc) — direto do XML
+        const vDesc  = parseFloat(det.querySelector('vDesc')?.textContent || 0) || 0;
+        // Outras despesas acessórias do item (vOutro) — direto do XML
+        const vOutro = parseFloat(det.querySelector('vOutro')?.textContent || 0) || 0;
+        // ICMS desonerado (benefício Suframa / ZFM-ALC) — qualquer grupo ICMSxx do item
+        const vICMSDeson = parseFloat(det.querySelector('imposto ICMS vICMSDeson')?.textContent || 0) || 0;
+        // Motivo da desoneração (tabela oficial NF-e): 6=ALC/Amazônia Ocidental, 7=SUFRAMA, 9/90=Outros, etc.
+        const motDesICMS = det.querySelector('imposto ICMS motDesICMS')?.textContent || null;
+        // Origem da mercadoria (0-8) — indica se é importada, usado para definir a alíquota interestadual (4%)
+        const origCodigo = det.querySelector('imposto ICMS orig')?.textContent ?? '0';
+        // CST/CSOSN real do ICMS — direto do grupo ICMSxx da nota (não estimado)
+        const cstXml   = det.querySelector('imposto ICMS CST')?.textContent || null;
+        const csosnXml = det.querySelector('imposto ICMS CSOSN')?.textContent || null;
+        // CEST — obrigatório para produtos sujeitos a ST/Antecipação (Convênio ICMS 142/2018).
+        // Sem CEST na nota, não há base legal para destacar ICMS de entrada.
+        const cest = det.querySelector('prod CEST')?.textContent || null;
+
+        // IPI: lê do XML (<pIPI>); respeita CST de não-tributação/suspensão/isenção antes de
+        // cair no fallback da TIPI (não exibido na tela de Custo de Entrada — SN/LP).
+        // CST IPI: 02,03,04,05,52,53,54,55 = isento/não-tributado/imune/suspensão → sempre 0%.
+        const pIpiXml  = parseFloat(det.querySelector('pIPI')?.textContent || '');
+        const ipiCstXml = det.querySelector('imposto IPI CST')?.textContent || null;
+        const IPI_CST_NAO_TRIBUTADO = ['02','03','04','05','52','53','54','55'];
+        const ipiRate = IPI_CST_NAO_TRIBUTADO.includes(ipiCstXml)
+          ? 0
+          : (!isNaN(pIpiXml) ? pIpiXml : getIpiFromNcm(ncm));
+
+        // Frete por unidade em R$ — proporcional ao valor do item na NF
+        const freqProporcao = vTotalProd > 0 ? vProd / vTotalProd : 1 / dets.length;
+        const freteRS = vFreteNota > 0
+          ? parseFloat(((vFreteNota * freqProporcao) / qCom).toFixed(4))
+          : 0;
+
+        // Dados fiscais do NCM
+        const fiscal = getNcmFiscal(ncm);
+
+        // Automação fiscal: ICMS de entrada (ST / Antecipação Parcial) — Estado do Acre.
+        // A função consulta o CEST da nota e também o NCM contra a normativa oficial (IN DIAT 1/2023);
+        // só calcula ST/Antecipação se uma das duas fontes confirmar que o NCM tem CEST.
+        const icmsEntradaAuto = getIcmsEntradaAcre(ncm, ufOrigem, origCodigo, cest);
+
+        return {
+          descricao: det.querySelector('xProd')?.textContent || '—',
+          ncm, qCom, vUnCom,
+          ipi: ipiRate,
+          ipiCstXml,           // CST do IPI na nota — define se é tributado, isento, suspenso etc.
+          icmsEntradaPct,      // % de ICMS real cobrado pelo fornecedor — direto do XML (pICMS ou vICMS/vBC)
+          freteRS,             // frete em R$/unidade vindo do XML
+          freteXml: freteRS,   // cópia imutável para referência
+          ncmFiscal: fiscal,   // dados CST/ST/isenção
+          desconto: vDesc / qCom || 0,        // R$/unidade — vem do XML (vDesc)
+          outrasDespesas: vOutro / qCom || 0, // R$/unidade — vem do XML (vOutro)
+          icmsDesonerado: vICMSDeson / qCom || 0, // R$/unidade — benefício Suframa
+          motDesICMS,                          // código do motivo da desoneração (NF-e)
+          isufDestinatario,                    // inscrição Suframa do destinatário (nota toda)
+          ufOrigem,                           // UF do fornecedor (origem da mercadoria)
+          origCodigo,                          // código <orig> (0-8) — indica importação
+          cstXml, csosnXml,                    // CST/CSOSN real do ICMS, lido direto da nota
+          cest,                                // CEST informado na nota (pode ser null)
+          cestResolvido: icmsEntradaAuto.cest,       // CEST efetivamente usado (nota ou consulta à normativa)
+          cestFonte: icmsEntradaAuto.cestFonte,      // 'xml' | 'normativa' | null
+          cestDivergente: icmsEntradaAuto.cestDivergente, // true se o CEST da nota difere do oficial p/ esse NCM
+          icmsEntradaTipo: icmsEntradaAuto.tipo,                       // 'ST' | 'antecipacao' | 'nenhum'
+          icmsEntradaAliquota: icmsEntradaAuto.aliquota,               // % automático
+          icmsEntradaAliquotaInterestadual: icmsEntradaAuto.aliquotaInterestadual, // 12 | 7 | 4
+        };
+      });
+      toast(`${produtos.length} produto(s) carregado(s)!`, 'success');
+      renderProducts();
+    } catch(err) { toast('Erro ao processar XML: ' + err.message, 'error'); }
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+/* ════════════════════════════════════════════════
+   TAX CALCULATION
+════════════════════════════════════════════════ */
+function calcAliquota(regime, anexo, rba) {
+  if (regime === 'MEI') return 0;
+  if (regime === 'LP') {
+    return LP.pis + LP.cofins + LP.icms + (LP.irpj_base * LP.irpj_rate) + (LP.csll_base * LP.csll_rate);
+  }
+  if (regime === 'LR') return LR.pis + LR.cofins + LR.icms;
+  // SN
+  const tab = SN_TABELAS[anexo || 'I'];
+  if (!tab || !rba) return 0.073;
+  const faixa = tab.find(f => rba <= f.ate) || tab[tab.length - 1];
+  return Math.max(0, (rba * faixa.nom - faixa.ded) / rba);
+}
+
+// Custo Efetivo único, usado por TODAS as telas (tabela, impressão, sidebar lista e detalhe),
+// para que o preço sugerido nunca divirja entre as visualizações.
+// freteRS = valor do frete em R$ por unidade (não percentual).
+function calcCustoEfetivo(p, freteRS, icmsEntPct, ipi) {
+  const desconto         = p.desconto ?? 0;
+  const outrasDespesas   = p.outrasDespesas ?? 0;
+  const icmsDesonerado   = p.icmsDesonerado ?? 0;
+  const stAliquota       = p.icmsEntradaAliquotaOverride ?? p.icmsEntradaAliquota ?? 0;
+  const icmsEntradaSTVal = p.vUnCom * stAliquota / 100; // ICMS-ST/Antecipação automático (Acre)
+  return p.vUnCom - desconto - icmsDesonerado + freteRS + outrasDespesas
+       + p.vUnCom * (icmsEntPct / 100 + ipi / 100) + icmsEntradaSTVal;
+}
+
+function calcPreco(custoEf, aliquota, margem) {
+  const div = 1 - aliquota - margem / 100 - (despesasTotalPct / 100);
+  if (div <= 0) return custoEf * 2;
+  return custoEf / div;
+}
+
+/* ════════════════════════════════════════════════
+   RENDER
+════════════════════════════════════════════════ */
+function renderProducts() {
+  document.getElementById('products-section').classList.remove('hidden');
+  document.getElementById('empty-state').classList.add('hidden');
+  document.getElementById('xml-filename-label').textContent = currentXmlName;
+  document.getElementById('produtos-count').textContent = `${produtos.length} item(s)`;
+  document.getElementById('pr-arquivo').textContent = currentXmlName;
+
+  const tbody = document.getElementById('products-tbody');
+  tbody.innerHTML = '';
+
+  const regime = empresaData.regime || 'SN';
+  const anexo  = empresaData.sn_anexo || 'I';
+  const rba    = empresaData.sn_rba || 360000;
+  const alq    = calcAliquota(regime, anexo, rba);
+  const margem      = parseFloat(document.getElementById('cfg-margem').value) || 30;
+  const freteGlobal = parseFloat(document.getElementById('cfg-frete').value)  || 0;
+  const icmsE       = parseFloat(document.getElementById('cfg-icms-entrada').value) || 12;
+
+  let totCusto = 0, totVenda = 0;
+
+  produtos.forEach((p, i) => {
+    const m      = p.margemCustom ?? margem;
+    const freteR = p.freteRS      ?? freteGlobal; // R$ por unidade
+    const ipi    = p.ipi ?? getIpiFromNcm(p.ncm);
+    const icms   = p.icmsEntradaPct ?? icmsE; // % de ICMS — real da nota quando disponível
+    const fiscal = p.ncmFiscal || getNcmFiscal(p.ncm);
+
+    const custoEf = calcCustoEfetivo(p, freteR, icms, ipi);
+    const preco   = calcPreco(custoEf, alq, m);
+    totCusto += custoEf * p.qCom;
+    totVenda += preco * p.qCom;
+
+    const ipiColor = ipi > 0 ? 'text-orange-500' : 'text-slate-400';
+    // Badge NCM fiscal
+    const stBadge  = fiscal?.st   ? '<span class="ml-1 px-1 py-0.5 text-[8px] font-bold bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 rounded">ST</span>' : '';
+    const isenBadge= fiscal?.isen ? '<span class="ml-1 px-1 py-0.5 text-[8px] font-bold bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 rounded">ISEN</span>' : '';
+    const cstReal  = p.cstXml || p.csosnXml;
+    const cstLabel = cstReal ? `${p.csosnXml ? 'CSOSN' : 'CST'} ${cstReal}` : (fiscal ? `CST ${fiscal.cst} (est.)` : '');
+    const cstBadge = cstLabel ? `<span class="px-1 py-0.5 text-[8px] font-bold ${cstReal ? 'bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'} rounded">${cstLabel}</span>` : '';
+    const xmlFreteLabel = p.freteXml > 0 && p.freteRS === p.freteXml
+      ? `<div class="text-[8px] text-blue-400 mt-0.5">do XML</div>` : '';
+
+    const tr = document.createElement('tr');
+    tr.className = 'product-row transition-colors';
+    tr.innerHTML = `
+      <td class="px-3 py-2.5 font-medium text-slate-700 dark:text-slate-200 max-w-[160px]">
+        <div class="truncate" title="${p.descricao}">${p.descricao}</div>
+        ${fiscal ? `<div class="text-[9px] text-slate-400 mt-0.5">${fiscal.cat}</div>` : ''}
+      </td>
+      <td class="px-3 py-2.5 text-center">
+        <div class="font-mono text-[10px] text-slate-500 dark:text-slate-400">${p.ncm}</div>
+        <div class="flex items-center justify-center gap-0.5 mt-0.5 flex-wrap">${cstBadge}${stBadge}${isenBadge}</div>
+      </td>
+      <td class="px-3 py-2.5 text-center">${p.qCom}</td>
+      <td class="px-3 py-2.5 text-center">${fmtBRL(p.vUnCom)}</td>
+      <td class="px-3 py-2.5 text-center text-slate-500">${fmtBRL(custoEf)}</td>
+      <td class="px-3 py-2.5 text-center">
+        <input type="number" value="${freteR.toFixed(2)}" min="0" step="0.01" onchange="setProdFrete(${i},this.value)"
+          title="Frete em R$ por unidade${p.freteXml>0?' (lido do XML)':''}"
+          class="w-16 text-center px-1 py-1 text-xs bg-slate-50 dark:bg-slate-900 border ${p.freteXml>0?'border-blue-300 dark:border-blue-700':'border-slate-200 dark:border-slate-700'} rounded-lg focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+        ${xmlFreteLabel}
+      </td>
+      <td class="px-3 py-2.5 text-center">
+        <input type="number" value="${m}" min="0" max="300" step="0.5" onchange="setProdMargem(${i},this.value)"
+          class="w-16 text-center px-1 py-1 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+      </td>
+      <td class="px-3 py-2.5 text-center ${ipiColor}">
+        <input type="number" value="${ipi}" min="0" max="500" step="0.5" title="IPI pela TIPI — edite se necessário" onchange="setProdIpi(${i},this.value)"
+          class="w-14 text-center px-1 py-1 text-xs bg-slate-50 dark:bg-slate-900 border border-orange-200 dark:border-orange-900/50 rounded-lg focus:ring-1 focus:ring-orange-400 focus:outline-none ${ipi>0?'text-orange-500':'text-slate-400'}">
+      </td>
+      <td class="px-3 py-2.5 text-center text-slate-500">${(alq*100).toFixed(2)}%</td>
+      <td class="px-3 py-2.5 text-center font-extrabold text-emerald-600 dark:text-emerald-400 text-sm">${fmtBRL(preco)}</td>
+      <td class="px-3 py-2.5 text-center">
+        <input type="number" placeholder="—" onchange="setProdAjuste(${i},this.value)"
+          class="w-20 text-center px-1 py-1 text-xs bg-slate-50 dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-600 rounded-lg focus:ring-1 focus:ring-blue-500 focus:outline-none"
+          ${p.ajuste ? `value="${p.ajuste}"` : ''}>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('sum-qty').textContent   = produtos.length;
+  document.getElementById('sum-custo').textContent  = fmtBRL(totCusto);
+  document.getElementById('sum-venda').textContent  = fmtBRL(totVenda);
+  document.getElementById('pr-margem').textContent  = margem + '%';
+
+  if (!produtos.length) {
+    document.getElementById('products-section').classList.add('hidden');
+    document.getElementById('empty-state').classList.remove('hidden');
+  }
+}
+
+function setProdFrete(i, v) { produtos[i].freteRS = parseFloat(v)||0; renderProducts(); }
+function setProdMargem(i, v){ produtos[i].margemCustom = parseFloat(v)||0; renderProducts(); }
+function setProdIpi(i, v)   { produtos[i].ipi = parseFloat(v)||0; renderProducts(); }
+function setProdAjuste(i, v){ produtos[i].ajuste = parseFloat(v)||null; }
+
+function recalcAll() { renderProducts(); }
+
+/* ════════════════════════════════════════════════
+   HISTORY
+════════════════════════════════════════════════ */
+async function saveToHistory() {
+  if (isDemo) { toast('Salvar desabilitado no modo demo.', 'warning'); return; }
+  if (!sb || !currentUser || !produtos.length) return;
+  try {
+    const regime = empresaData.regime || 'SN';
+    const margem = parseFloat(document.getElementById('cfg-margem').value) || 30;
+    const frete  = parseFloat(document.getElementById('cfg-frete').value)  || 0;
+    await sb.from('notas_fiscais').insert({
+      user_id: currentUser.id,
+      arquivo: currentXmlName, regime, margem, frete,
+      produtos: JSON.stringify(produtos)
+    });
+    toast('Salvo no histórico!', 'success');
+    loadHistory();
+  } catch(e) { toast('Erro ao salvar: ' + e.message, 'error'); }
+}
+
+async function loadHistory() {
+  const list = document.getElementById('history-list');
+  if (isDemo) {
+    list.innerHTML = '<p class="text-xs text-slate-400 text-center py-8">Histórico disponível apenas em conta registrada.</p>';
+    return;
+  }
+  if (!sb || !currentUser) { list.innerHTML = '<p class="text-xs text-slate-400 text-center py-8">Faça login para ver o histórico.</p>'; return; }
+
+  try {
+    const { data, error } = await sb.from('notas_fiscais').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }).limit(20);
+    if (error) throw error;
+    if (!data?.length) {
+      list.innerHTML = '<p class="text-xs text-slate-400 text-center py-8">Nenhuma análise salva ainda.</p>';
+      return;
+    }
+    list.innerHTML = data.map(item => `
+      <div class="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex items-center justify-between gap-3">
+        <div class="min-w-0">
+          <div class="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">${item.arquivo || '—'}</div>
+          <div class="text-[10px] text-slate-400 mt-0.5">${item.regime} · Margem ${item.margem}% · ${new Date(item.created_at).toLocaleDateString('pt-BR')}</div>
+        </div>
+        <button onclick="restoreHistory('${item.id}')" class="shrink-0 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold rounded-lg transition-all">Abrir</button>
+      </div>
+    `).join('');
+  } catch(e) {
+    list.innerHTML = `<p class="text-xs text-red-400 text-center py-8">Erro ao carregar histórico.</p>`;
+  }
+}
+
+async function restoreHistory(id) {
+  try {
+    const { data } = await sb.from('notas_fiscais').select('*').eq('id', id).single();
+    if (!data) return;
+    currentXmlName = data.arquivo || 'historico.xml';
+    produtos = typeof data.produtos === 'string' ? JSON.parse(data.produtos) : (data.produtos || []);
+    document.getElementById('cfg-margem').value = data.margem || 30;
+    document.getElementById('cfg-frete').value  = data.frete  || 0;
+    if (data.regime) { document.getElementById('cfg-regime').value = data.regime; onRegimeChange(); }
+    renderProducts();
+    switchTab(0);
+    toast('Análise carregada!', 'success');
+  } catch(e) { toast('Erro ao restaurar.', 'error'); }
+}
+
+/* ════════════════════════════════════════════════
+   PRINT
+════════════════════════════════════════════════ */
+function printReport() {
+  if (!produtos.length) { toast('Nenhum produto para imprimir.', 'warning'); return; }
+  document.getElementById('pr-date').textContent = 'Emitido em: ' + new Date().toLocaleDateString('pt-BR');
+
+  const regime = empresaData.regime || 'SN';
+  const anexo  = empresaData.sn_anexo || 'I';
+  const rba    = empresaData.sn_rba || 360000;
+  const alq    = calcAliquota(regime, anexo, rba);
+  const margem      = parseFloat(document.getElementById('cfg-margem').value) || 30;
+  const freteGlobal = parseFloat(document.getElementById('cfg-frete').value)  || 0;
+  const icmsE       = parseFloat(document.getElementById('cfg-icms-entrada').value) || 12;
+
+  let total = 0;
+  const tbody = document.getElementById('pr-body');
+  tbody.innerHTML = '';
+  produtos.forEach((p, i) => {
+    const m      = p.margemCustom ?? margem;
+    const freteR = p.freteRS      ?? freteGlobal;
+    const ipi    = p.ipi ?? getIpiFromNcm(p.ncm);
+    const icms   = p.icmsEntradaPct ?? icmsE;
+    const custoEf = calcCustoEfetivo(p, freteR, icms, ipi);
+    const preco   = p.ajuste || calcPreco(custoEf, alq, m);
+    total += preco * p.qCom;
+    const bg = i % 2 === 0 ? '#fff' : '#f8fafc';
+    tbody.innerHTML += `
+      <tr style="background:${bg};">
+        <td style="border:1px solid #e2e8f0;padding:6px 8px;max-width:200px;">${p.descricao}</td>
+        <td style="border:1px solid #e2e8f0;padding:6px 8px;text-align:center;font-family:monospace;">${p.ncm}</td>
+        <td style="border:1px solid #e2e8f0;padding:6px 8px;text-align:right;">${fmtBRL(p.vUnCom)}</td>
+        <td style="border:1px solid #e2e8f0;padding:6px 8px;text-align:right;">${fmtBRL(custoEf)}</td>
+        <td style="border:1px solid #e2e8f0;padding:6px 8px;text-align:center;">${m}%</td>
+        <td style="border:1px solid #e2e8f0;padding:6px 8px;text-align:right;font-weight:900;background:#f0fdf4;color:#166534;">${fmtBRL(preco)}</td>
+        <td style="border:1px dashed #000;border-left:2px dashed #000;padding:6px 8px;text-align:right;">${p.ajuste ? fmtBRL(p.ajuste) : '—'}</td>
+      </tr>`;
+  });
+  document.getElementById('pr-total').textContent = 'Total sugerido: ' + fmtBRL(total);
+  document.body.classList.add('print-mode-relatorio');
+  document.body.classList.remove('print-mode-cadastro');
+  window.print();
+  document.body.classList.remove('print-mode-relatorio');
+}
+
+/* ════════════════════════════════════════════════
+   TABS
+════════════════════════════════════════════════ */
+function switchTab(n) {
+  const panes = document.querySelectorAll('.tab-pane');
+  panes.forEach((p, i) => {
+    p.className = 'tab-pane ' + (i === n ? 'active' : (i < n ? 'left' : 'right'));
+  });
+  const navBtns = [0,1,2].map(i => document.getElementById('nav-' + i));
+  navBtns.forEach((b, i) => {
+    b.className = i === n
+      ? 'px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all bg-emerald-600 text-white'
+      : 'px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800';
+  });
+  activeTab = n;
+  if (n === 1) loadHistory();
+}
+
+/* ════════════════════════════════════════════════
+   THEME
+════════════════════════════════════════════════ */
+function toggleTheme() {
+  const d = document.documentElement;
+  const isDark = d.classList.contains('dark');
+  d.classList.toggle('dark', !isDark);
+  localStorage.setItem('gf_theme', isDark ? 'light' : 'dark');
+}
+
+/* ════════════════════════════════════════════════
+   UTILS
+════════════════════════════════════════════════ */
+function fmtBRL(n) {
+  return (n||0).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+}
+function fmtNum(n) {
+  return (n||0).toLocaleString('pt-BR');
+}
+
+function maskPhone(el) {
+  let v = el.value.replace(/\D/g,'').slice(0,11);
+  if (v.length > 6) v = v.replace(/^(\d{2})(\d{5})(\d{0,4})/,'($1) $2-$3');
+  else if (v.length > 2) v = v.replace(/^(\d{2})(\d{0,5})/,'($1) $2');
+  else if (v.length > 0) v = v.replace(/^(\d{0,2})/,'($1');
+  el.value = v;
+}
+
+function maskCNPJ(el) {
+  let v = el.value.replace(/\D/g,'').slice(0,14);
+  if (v.length > 12) v = v.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{0,2})/,'$1.$2.$3/$4-$5');
+  else if (v.length > 8) v = v.replace(/^(\d{2})(\d{3})(\d{3})(\d{0,4})/,'$1.$2.$3/$4');
+  else if (v.length > 5) v = v.replace(/^(\d{2})(\d{3})(\d{0,3})/,'$1.$2.$3');
+  else if (v.length > 2) v = v.replace(/^(\d{2})(\d{0,3})/,'$1.$2');
+  el.value = v;
+}
+
+function setBtnLoading(btnId, iconId, labelId, loading, text) {
+  const btn   = document.getElementById(btnId);
+  const icon  = document.getElementById(iconId);
+  const label = document.getElementById(labelId);
+  if (!btn) return;
+  btn.disabled = loading;
+  if (loading) {
+    btn.classList.add('opacity-70', 'cursor-wait');
+    if (icon) icon.outerHTML = `<svg id="${iconId}" class="spinner w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>`;
+    if (label) label.textContent = text || 'Aguarde...';
+  } else {
+    btn.classList.remove('opacity-70', 'cursor-wait');
+    if (label) label.textContent = btnId === 'btn-login' ? 'Entrar' : 'Criar Conta';
+    lucide.createIcons();
+  }
+}
+
+function translateAuthError(msg) {
+  msg = msg.toLowerCase();
+  if (msg.includes('invalid login') || msg.includes('invalid credentials')) return 'E-mail ou senha incorretos.';
+  if (msg.includes('email not confirmed')) return 'Confirme seu e-mail antes de entrar.';
+  if (msg.includes('user already registered') || msg.includes('already registered')) return 'Este e-mail já está cadastrado.';
+  if (msg.includes('network') || msg.includes('fetch')) return 'Erro de conexão. Use o arquivo .bat para abrir via servidor local.';
+  if (msg.includes('password')) return 'Senha deve ter pelo menos 6 caracteres.';
+  if (msg.includes('email')) return 'E-mail inválido.';
+  return msg.charAt(0).toUpperCase() + msg.slice(1);
+}
+
+/* ════════════════════════════════════════════════
+   SETTINGS SUB-TABS
+════════════════════════════════════════════════ */
+function setCfgTab(name) {
+  document.querySelectorAll('.cfg-panel').forEach(p => p.classList.add('hidden'));
+  document.querySelectorAll('.cfg-tab-btn').forEach(b => {
+    b.className = 'cfg-tab-btn px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800';
+  });
+  document.getElementById('cfg-panel-' + name).classList.remove('hidden');
+  const btn = document.getElementById('ctab-' + name);
+  btn.className = 'cfg-tab-btn active-cfg-tab px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1';
+  if (name === 'calculo') renderCalculoTab();
+  lucide.createIcons();
+}
+
+/* ════════════════════════════════════════════════
+   WHATSAPP WEBHOOK
+════════════════════════════════════════════════ */
+
+const WA_ADMIN = '5519989765398';
+
+function sendWhatsAppLead(data) {
+  const regimeLabels = { MEI:'MEI', SN:'Simples Nacional', LP:'Lucro Presumido', LR:'Lucro Real' };
+  const msg = [
+    '🎯 *Novo cadastro — GESTORFISCAL*',
+    '',
+    `👤 *Nome:* ${data.nome}`,
+    `🏢 *Empresa:* ${data.empresa}`,
+    `📊 *Regime:* ${regimeLabels[data.regime] || data.regime}`,
+    `📧 *E-mail:* ${data.email}`,
+    `📱 *WhatsApp:* ${data.telefone || '—'}`,
+    data.cnpj ? `🔢 *CNPJ:* ${data.cnpj}` : '',
+    (data.cidade || data.uf) ? `📍 *Local:* ${data.cidade || ''}${data.uf ? '/' + data.uf : ''}` : '',
+    '',
+    `📅 ${new Date().toLocaleString('pt-BR')}`
+  ].filter(l => l !== null).join('\n');
+
+  setTimeout(() => {
+    window.open('https://wa.me/' + WA_ADMIN + '?text=' + encodeURIComponent(msg), '_blank');
+  }, 1500);
+}
+
+/* ════════════════════════════════════════════════
+   PÓS-CADASTRO
+════════════════════════════════════════════════ */
+let _lastSignupData = {};
+
+function mostrarModalPosCadastro(data) {
+  _lastSignupData = data;
+  const regimeLabels = { MEI:'MEI', SN:'Simples Nacional', LP:'Lucro Presumido', LR:'Lucro Real' };
+  const alq = calcAliquota(data.regime, data.snAnexo, data.snRba);
+  document.getElementById('modal-boas-vindas').textContent = `Bem-vindo(a), ${data.nome}!`;
+  document.getElementById('mc-empresa').textContent   = data.empresa || '—';
+  document.getElementById('mc-regime').textContent    = regimeLabels[data.regime] || data.regime;
+  document.getElementById('mc-aliquota').textContent  = (alq * 100).toFixed(2) + '%';
+  document.getElementById('mc-telefone').textContent  = data.telefone || '—';
+  document.getElementById('modal-pos-cadastro').classList.remove('hidden');
+  lucide.createIcons();
+}
+
+function fecharModalPosCadastro() {
+  document.getElementById('modal-pos-cadastro').classList.add('hidden');
+}
+
+function imprimirPosCadastro() {
+  const d = _lastSignupData;
+  const regimeLabels = { MEI:'MEI', SN:'Simples Nacional', LP:'Lucro Presumido', LR:'Lucro Real' };
+  const alq = calcAliquota(d.regime, d.snAnexo, d.snRba);
+  document.getElementById('ppc-date').textContent     = 'Emitido em: ' + new Date().toLocaleDateString('pt-BR');
+  document.getElementById('ppc-nome').textContent     = d.nome || '—';
+  document.getElementById('ppc-empresa').textContent  = d.empresa || '—';
+  document.getElementById('ppc-email').textContent    = d.email || '—';
+  document.getElementById('ppc-telefone').textContent = d.telefone || '—';
+  document.getElementById('ppc-regime').textContent   = regimeLabels[d.regime] || d.regime;
+  document.getElementById('ppc-aliquota').textContent = (alq * 100).toFixed(2) + '%';
+  document.body.classList.add('print-mode-cadastro');
+  document.body.classList.remove('print-mode-relatorio');
+  window.print();
+  document.body.classList.remove('print-mode-cadastro');
+}
+
+/* ════════════════════════════════════════════════
+   DESPESAS
+════════════════════════════════════════════════ */
+let despesasTotalPct = 0;
+
+const DESP_FIELDS_FIXAS = [
+  'salarios','prolabore','fgts','inss','ferias','decimo',
+  'aluguel','cond','iptu','agua','energia',
+  'internet','erp','celulares',
+  'contabil','bancarias','seguros','manut','material','marketing','outros'
+];
+
+function calcDespesas() {
+  const fat = parseFloat(document.getElementById('desp-fat').value) || 0;
+  let totalFixo = 0;
+  DESP_FIELDS_FIXAS.forEach(f => {
+    totalFixo += parseFloat(document.getElementById('desp-' + f)?.value) || 0;
+  });
+  const pctFixo = fat > 0 ? (totalFixo / fat) * 100 : 0;
+
+  const tc = parseFloat(document.getElementById('desp-tcredito').value) || 0;
+  const td = parseFloat(document.getElementById('desp-tdebito').value) || 0;
+  const tp = parseFloat(document.getElementById('desp-tpix').value) || 0;
+  const tm = parseFloat(document.getElementById('desp-tmkt').value) || 0;
+  const pctVar = tc + td + tp + tm;
+  const pctTotal = pctFixo + pctVar;
+  despesasTotalPct = pctTotal;
+
+  const el = id => document.getElementById(id);
+  if (el('desp-res-fixo'))    el('desp-res-fixo').textContent    = pctFixo.toFixed(2) + '%';
+  if (el('desp-res-fixo-val'))el('desp-res-fixo-val').textContent= fmtBRL(totalFixo);
+  if (el('desp-res-var'))     el('desp-res-var').textContent     = pctVar.toFixed(2) + '%';
+  if (el('desp-res-total'))   el('desp-res-total').textContent   = pctTotal.toFixed(2) + '%';
+}
+
+function saveDespesas() {
+  const data = {};
+  DESP_FIELDS_FIXAS.forEach(f => { data[f] = parseFloat(document.getElementById('desp-' + f)?.value) || 0; });
+  data.tcredito = parseFloat(document.getElementById('desp-tcredito').value) || 2.5;
+  data.tdebito  = parseFloat(document.getElementById('desp-tdebito').value)  || 1.5;
+  data.tpix     = parseFloat(document.getElementById('desp-tpix').value)     || 0;
+  data.tmkt     = parseFloat(document.getElementById('desp-tmkt').value)     || 0;
+  data.fat      = parseFloat(document.getElementById('desp-fat').value)      || 0;
+  data.de       = document.getElementById('desp-de').value;
+  data.ate      = document.getElementById('desp-ate').value;
+  localStorage.setItem('gf_despesas', JSON.stringify(data));
+  calcDespesas();
+  toast('Despesas salvas! Incluídas no cálculo de preços.', 'success');
+}
+
+function loadDespesas() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('gf_despesas') || '{}');
+    const set = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.value = val; };
+    DESP_FIELDS_FIXAS.forEach(f => { if (saved[f] != null) set('desp-' + f, saved[f]); });
+    if (saved.tcredito != null) set('desp-tcredito', saved.tcredito);
+    if (saved.tdebito != null)  set('desp-tdebito', saved.tdebito);
+    if (saved.tpix != null)     set('desp-tpix', saved.tpix);
+    if (saved.tmkt != null)     set('desp-tmkt', saved.tmkt);
+    if (saved.fat != null)      set('desp-fat', saved.fat);
+    if (saved.de)               set('desp-de', saved.de);
+    if (saved.ate)              set('desp-ate', saved.ate);
+    calcDespesas();
+  } catch(e) {}
+}
+
+/* ════════════════════════════════════════════════
+   CÁLCULO — alíquotas editáveis
+════════════════════════════════════════════════ */
+function showCalcDesc(txt) {
+  const el = document.getElementById('calculo-desc-text');
+  if (el) el.textContent = txt;
+}
+
+function renderCalculoTab() {
+  const regime = empresaData.regime || 'SN';
+  const cont = document.getElementById('calculo-regime-content');
+  if (!cont) return;
+
+  const field = (id, label, val, step, ring, desc) => `
+    <div class="tooltip-wrap">
+      <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">${label}</label>
+      <input type="number" id="${id}" value="${val}" step="${step}" min="0"
+        class="alq-field w-full px-3 py-2 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-${ring}-400"
+        onfocus="showCalcDesc('${desc.replace(/'/g,"\\'")}')">
+      <div class="tooltip-box bg-slate-800 text-white text-[10px] px-2 py-1.5 rounded-lg">${label}</div>
+    </div>`;
+
+  const alqAtual = (calcAliquota(regime, empresaData.sn_anexo || 'I', empresaData.sn_rba || 360000) * 100).toFixed(2);
+
+  const regimeLabels = { MEI:'MEI — Microempreendedor Individual', SN:'Simples Nacional', LP:'Lucro Presumido', LR:'Lucro Real' };
+  const regimeColors = { MEI:'blue', SN:'emerald', LP:'amber', LR:'purple' };
+  const c = regimeColors[regime] || 'emerald';
+
+  let html = `
+    <div class="flex items-center gap-3 mb-2">
+      <div class="px-3 py-1 rounded-full bg-${c}-100 dark:bg-${c}-950/40 text-${c}-700 dark:text-${c}-300 text-xs font-extrabold border border-${c}-200 dark:border-${c}-900">
+        ${regimeLabels[regime]}
+      </div>
+      <span class="text-xs text-slate-400">Alíquota atual: <strong class="text-${c}-600 dark:text-${c}-400">${alqAtual}%</strong></span>
+    </div>`;
+
+  if (regime === 'MEI') {
+    html += `
+      <div class="bg-white dark:bg-[#0f172a] border border-blue-200 dark:border-blue-900/50 rounded-2xl p-5 space-y-3">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-950/50 flex items-center justify-center"><i data-lucide="user-check" class="w-4 h-4 text-blue-500"></i></div>
+          <h3 class="text-xs font-extrabold text-slate-700 dark:text-slate-200 uppercase tracking-wider">MEI — Cálculo</h3>
+        </div>
+        <div class="bg-blue-50 dark:bg-blue-950/20 rounded-xl p-4 text-xs text-blue-700 dark:text-blue-300 space-y-2">
+          <p><strong>Imposto sobre vendas: 0%</strong> — O MEI não recolhe ICMS, PIS ou COFINS sobre as vendas.</p>
+          <p>O único tributo é o <strong>DAS fixo mensal</strong> (valor varia por atividade, em 2026 em torno de R$ 71–76/mês para comércio).</p>
+          <p>Limite de faturamento: <strong>R$ 81.000/ano</strong>. Ao ultrapassar, deve migrar para Simples Nacional.</p>
+        </div>
+        <div class="grid grid-cols-2 gap-3 text-[11px]">
+          <div class="bg-slate-50 dark:bg-slate-900 rounded-xl p-3"><div class="text-slate-400 mb-1">Alíquota sobre venda</div><div class="text-2xl font-extrabold text-blue-600 dark:text-blue-400">0%</div></div>
+          <div class="bg-slate-50 dark:bg-slate-900 rounded-xl p-3"><div class="text-slate-400 mb-1">Limite anual</div><div class="text-xl font-extrabold text-slate-700 dark:text-slate-200">R$ 81.000</div></div>
+        </div>
+        <p class="text-[10px] text-slate-400">A margem de lucro e o frete de entrada ainda são considerados normalmente no cálculo do preço sugerido.</p>
+      </div>`;
+  }
+
+  if (regime === 'SN') {
+    const anexo  = empresaData.sn_anexo || 'I';
+    const rba    = empresaData.sn_rba || 360000;
+    const tab    = SN_TABELAS[anexo] || SN_TABELAS['I'];
+    const faixa  = tab.find(f => rba <= f.ate) || tab[tab.length-1];
+    const alqEf  = Math.max(0, (rba * faixa.nom - faixa.ded) / rba);
+    const anexoLabels = { I:'Comércio', II:'Indústria', III:'Serviços 1', IV:'Serviços 2', V:'Serviços 3' };
+
+    const linhas = tab.map((f, idx) => {
+      const ef = Math.max(0, (f.ate > 0 ? (f.ate * f.nom - f.ded) / f.ate : 0) * 100).toFixed(2);
+      const destaque = rba <= f.ate && (idx === 0 || rba > tab[idx-1].ate);
+      return `<tr class="${destaque ? 'bg-emerald-50 dark:bg-emerald-950/30 font-bold' : ''}">
+        <td class="border border-slate-200 dark:border-slate-700 px-2 py-1.5">${fmtBRL(idx > 0 ? tab[idx-1].ate : 0)} – ${fmtBRL(f.ate)}</td>
+        <td class="border border-slate-200 dark:border-slate-700 px-2 py-1.5 text-center">${(f.nom*100).toFixed(1)}%</td>
+        <td class="border border-slate-200 dark:border-slate-700 px-2 py-1.5 text-center">${fmtBRL(f.ded)}</td>
+        <td class="border border-slate-200 dark:border-slate-700 px-2 py-1.5 text-center text-emerald-700 dark:text-emerald-400 font-bold">${ef}%</td>
+        ${destaque ? '<td class="border border-slate-200 dark:border-slate-700 px-2 py-1.5 text-center text-emerald-600 text-[10px]">◀ atual</td>' : '<td class="border border-slate-200 dark:border-slate-700 px-2 py-1.5"></td>'}
+      </tr>`;
+    }).join('');
+
+    html += `
+      <div class="bg-white dark:bg-[#0f172a] border border-emerald-200 dark:border-emerald-900/50 rounded-2xl p-5 space-y-3">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950/50 flex items-center justify-center"><i data-lucide="layers" class="w-4 h-4 text-emerald-500"></i></div>
+          <h3 class="text-xs font-extrabold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Simples Nacional — Anexo ${anexo} (${anexoLabels[anexo] || ''})</h3>
+        </div>
+        <div class="grid grid-cols-3 gap-3 text-[11px] mb-2">
+          <div class="bg-slate-50 dark:bg-slate-900 rounded-xl p-3 text-center"><div class="text-slate-400 mb-1">RBT12</div><div class="font-extrabold text-slate-700 dark:text-slate-200">${fmtBRL(rba)}</div></div>
+          <div class="bg-slate-50 dark:bg-slate-900 rounded-xl p-3 text-center"><div class="text-slate-400 mb-1">Alíquota Nominal</div><div class="font-extrabold text-slate-700 dark:text-slate-200">${(faixa.nom*100).toFixed(1)}%</div></div>
+          <div class="bg-emerald-50 dark:bg-emerald-950/30 rounded-xl p-3 text-center border border-emerald-200 dark:border-emerald-900"><div class="text-emerald-600 dark:text-emerald-400 mb-1">Alíquota Efetiva</div><div class="text-xl font-extrabold text-emerald-700 dark:text-emerald-300">${(alqEf*100).toFixed(2)}%</div></div>
+        </div>
+        <div class="text-[10px] text-slate-400 mb-2">Fórmula: <code class="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">(RBT12 × Alíq. Nominal − Dedução) ÷ RBT12</code></div>
+        <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
+          <table class="w-full text-[11px]">
+            <thead class="bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 text-[10px] uppercase">
+              <tr>
+                <th class="border border-slate-200 dark:border-slate-700 px-2 py-2">Faixa RBT12</th>
+                <th class="border border-slate-200 dark:border-slate-700 px-2 py-2">Alíq. Nominal</th>
+                <th class="border border-slate-200 dark:border-slate-700 px-2 py-2">Dedução</th>
+                <th class="border border-slate-200 dark:border-slate-700 px-2 py-2">Alíq. Efetiva</th>
+                <th class="border border-slate-200 dark:border-slate-700 px-2 py-2"></th>
+              </tr>
+            </thead>
+            <tbody class="bg-white dark:bg-[#0f172a]">${linhas}</tbody>
+          </table>
+        </div>
+      </div>`;
+  }
+
+  if (regime === 'LP') {
+    html += `
+      <div class="bg-white dark:bg-[#0f172a] border border-amber-200 dark:border-amber-900/50 rounded-2xl p-5 space-y-3">
+        <div class="flex items-center gap-2 mb-2">
+          <div class="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-950/50 flex items-center justify-center"><i data-lucide="bar-chart-2" class="w-4 h-4 text-amber-500"></i></div>
+          <h3 class="text-xs font-extrabold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Lucro Presumido — Alíquotas</h3>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          ${field('alq-lp-pis','PIS (%)',(LP.pis*100).toFixed(2),'0.01','amber','PIS (Programa de Integração Social): incide sobre o faturamento. No Lucro Presumido a alíquota é cumulativa de 0,65%.')}
+          ${field('alq-lp-cofins','COFINS (%)',(LP.cofins*100).toFixed(2),'0.01','amber','COFINS: alíquota cumulativa de 3% no LP. Incide sobre receita bruta sem direito a crédito.')}
+          ${field('alq-lp-icms','ICMS saída (%)',(LP.icms*100).toFixed(2),'0.5','amber','ICMS: varia por estado. A alíquota interna mais comum é 17–18%. Interestadual é 12% ou 4%.')}
+          ${field('alq-lp-irpj-base','Base IRPJ (%)',(LP.irpj_base*100).toFixed(2),'0.5','amber','Base de presunção do IRPJ: 8% para comércio/indústria, 32% para serviços. Sobre essa base aplica-se 15% de IRPJ.')}
+          ${field('alq-lp-irpj-rate','Alíq. IRPJ (%)',(LP.irpj_rate*100).toFixed(2),'0.5','amber','Alíquota do IRPJ: 15% sobre a base presumida. Adicional de 10% sobre lucro acima de R$ 20.000/mês.')}
+          ${field('alq-lp-csll-base','Base CSLL (%)',(LP.csll_base*100).toFixed(2),'0.5','amber','Base de presunção da CSLL: 12% para comércio, 32% para serviços. Alíquota de 9% sobre essa base.')}
+        </div>
+        <div class="bg-amber-50 dark:bg-amber-950/20 rounded-xl p-3 text-xs text-amber-700 dark:text-amber-300">
+          <strong>Alíquota total estimada:</strong> PIS + COFINS + ICMS + (Base IRPJ × Alíq. IRPJ) + (Base CSLL × 9%) = <strong>${alqAtual}%</strong>
+        </div>
+        <button onclick="saveAliquotas()" class="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl transition-all flex items-center gap-1.5">
+          <i data-lucide="save" class="w-3.5 h-3.5"></i> Salvar Alíquotas
+        </button>
+      </div>`;
+  }
+
+  if (regime === 'LR') {
+    html += `
+      <div class="bg-white dark:bg-[#0f172a] border border-purple-200 dark:border-purple-900/50 rounded-2xl p-5 space-y-3">
+        <div class="flex items-center gap-2 mb-2">
+          <div class="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-950/50 flex items-center justify-center"><i data-lucide="calculator" class="w-4 h-4 text-purple-500"></i></div>
+          <h3 class="text-xs font-extrabold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Lucro Real — Alíquotas</h3>
+        </div>
+        <div class="bg-purple-50 dark:bg-purple-950/20 rounded-xl p-3 text-xs text-purple-700 dark:text-purple-300 mb-2">
+          No Lucro Real, PIS (1,65%) e COFINS (7,6%) são <strong>não-cumulativos</strong>: você pode abater créditos sobre compras, energia, aluguéis e insumos — reduzindo o custo efetivo.
+        </div>
+        <div class="grid grid-cols-3 gap-3">
+          ${field('alq-lr-pis','PIS (%)',(LR.pis*100).toFixed(2),'0.01','purple','PIS não-cumulativo (LR): 1,65%. Permite crédito nas entradas de mercadorias, insumos e serviços utilizados na produção.')}
+          ${field('alq-lr-cofins','COFINS (%)',(LR.cofins*100).toFixed(2),'0.01','purple','COFINS não-cumulativa (LR): 7,6%. Crédito sobre energia elétrica, aluguéis, depreciação de máquinas, compras para revenda.')}
+          ${field('alq-lr-icms','ICMS saída (%)',(LR.icms*100).toFixed(2),'0.5','purple','ICMS: no LR permite abater crédito de ICMS da entrada contra o ICMS de saída. Verifique a alíquota do seu estado.')}
+        </div>
+        <div class="bg-purple-50 dark:bg-purple-950/20 rounded-xl p-3 text-xs text-purple-700 dark:text-purple-300">
+          <strong>Alíquota bruta usada no cálculo:</strong> PIS + COFINS + ICMS = <strong>${alqAtual}%</strong> (sem considerar créditos — ajuste via alíquota líquida se necessário)
+        </div>
+        <button onclick="saveAliquotas()" class="px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl transition-all flex items-center gap-1.5">
+          <i data-lucide="save" class="w-3.5 h-3.5"></i> Salvar Alíquotas
+        </button>
+      </div>`;
+  }
+
+  cont.innerHTML = html;
+  lucide.createIcons();
+}
+
+function saveAliquotas() {
+  const g = id => parseFloat(document.getElementById(id)?.value) || 0;
+  LP.pis        = g('alq-lp-pis') / 100;
+  LP.cofins     = g('alq-lp-cofins') / 100;
+  LP.icms       = g('alq-lp-icms') / 100;
+  LP.irpj_base  = g('alq-lp-irpj-base') / 100;
+  LP.irpj_rate  = g('alq-lp-irpj-rate') / 100;
+  LP.csll_base  = g('alq-lp-csll-base') / 100;
+  LR.pis        = g('alq-lr-pis') / 100;
+  LR.cofins     = g('alq-lr-cofins') / 100;
+  LR.icms       = g('alq-lr-icms') / 100;
+  localStorage.setItem('gf_aliquotas', JSON.stringify({ LP, LR }));
+  toast('Alíquotas personalizadas salvas!', 'success');
+  if (produtos.length) renderProducts();
+}
+
+function loadAliquotas() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('gf_aliquotas') || 'null');
+    if (!saved) return;
+    if (saved.LP) Object.assign(LP, saved.LP);
+    if (saved.LR) Object.assign(LR, saved.LR);
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = (val * 100).toFixed(2); };
+    set('alq-lp-pis', LP.pis); set('alq-lp-cofins', LP.cofins); set('alq-lp-icms', LP.icms);
+    set('alq-lp-irpj-base', LP.irpj_base); set('alq-lp-irpj-rate', LP.irpj_rate);
+    set('alq-lp-csll-base', LP.csll_base);
+    set('alq-lr-pis', LR.pis); set('alq-lr-cofins', LR.cofins); set('alq-lr-icms', LR.icms);
+  } catch(e) {}
+}
+
+/* ════════════════════════════════════════════════
+   PRODUCT SIDEBAR VIEW
+════════════════════════════════════════════════ */
+let sidebarViewActive = false;
+let selectedProductIdx = 0;
+
+function toggleSidebarView() {
+  sidebarViewActive = !sidebarViewActive;
+  document.getElementById('view-tabela').classList.toggle('hidden', sidebarViewActive);
+  document.getElementById('view-sidebar').classList.toggle('hidden', !sidebarViewActive);
+  document.getElementById('sidebar-toggle-label').textContent = sidebarViewActive ? 'Vista Tabela' : 'Vista Sidebar';
+  if (sidebarViewActive) renderSidebar();
+}
+
+function renderSidebar() {
+  const regime = empresaData.regime || 'SN';
+  const anexo  = empresaData.sn_anexo || 'I';
+  const rba    = empresaData.sn_rba || 360000;
+  const alq    = calcAliquota(regime, anexo, rba);
+  const margem      = parseFloat(document.getElementById('cfg-margem').value) || 30;
+  const freteGlobal = parseFloat(document.getElementById('cfg-frete').value)  || 0;
+  const icmsE       = parseFloat(document.getElementById('cfg-icms-entrada').value) || 12;
+
+  const list = document.getElementById('sidebar-product-list');
+  list.innerHTML = '';
+  produtos.forEach((p, i) => {
+    const m      = p.margemCustom ?? margem;
+    const freteR = p.freteRS      ?? freteGlobal;
+    const ipiP   = p.ipi ?? getIpiFromNcm(p.ncm);
+    const icmsP  = p.icmsEntradaPct ?? icmsE;
+    const custoEfP = calcCustoEfetivo(p, freteR, icmsP, ipiP);
+    const preco  = p.ajuste || calcPreco(custoEfP, alq, m);
+    const div = document.createElement('div');
+    div.className = 'prod-sidebar-item' + (i === selectedProductIdx ? ' selected' : '');
+    div.onclick = () => { selectedProductIdx = i; renderSidebar(); };
+    div.innerHTML = `
+      <div class="text-xs font-bold text-slate-700 dark:text-slate-200 truncate" title="${p.descricao}">${p.descricao}</div>
+      <div class="flex items-center justify-between mt-1">
+        <span class="text-[10px] text-slate-400 font-mono">${p.ncm}</span>
+        <span class="text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400">${fmtBRL(preco)}</span>
+      </div>`;
+    list.appendChild(div);
+  });
+  lucide.createIcons();
+  renderSidebarDetail(alq, margem, freteGlobal, icmsE);
+}
+
+function renderSidebarDetail(alq, defaultMargem, defaultFrete, icmsE) {
+  if (!produtos.length) return;
+  const p = produtos[selectedProductIdx];
+  if (!p) return;
+
+  const idx     = selectedProductIdx;
+  const regime  = empresaData.regime || 'SN';
+  const m       = p.margemCustom ?? defaultMargem;
+  const f       = p.freteRS      ?? defaultFrete; // R$ por unidade
+  const ipi     = p.ipi          ?? getIpiFromNcm(p.ncm);
+  const fiscal  = p.ncmFiscal    || getNcmFiscal(p.ncm);
+  const despPct = despesasTotalPct;
+
+  // ── CUSTO DE ENTRADA (conforme especificação) ─────
+  const precoCompra     = p.vUnCom;                       // vUnProd — direto do XML
+  const desconto        = p.desconto        ?? 0;          // vDesc — direto do XML
+  const freteVal        = f;                                // vFrete rateado — já em R$/unidade
+  const outrasDespesas  = p.outrasDespesas  ?? 0;          // vOutro — direto do XML
+  const icmsDesonerado  = p.icmsDesonerado  ?? 0;          // vICMSDeson — benefício Suframa/ZFM-ALC
+  const icmsRegular     = p.icmsEntradaPct  ?? icmsE;       // ICMS normal da nota (pICMS/vICMS), igual às demais telas
+
+  // ── ICMS DE ENTRADA — automação fiscal (NCM + UF origem → Estado do Acre) ──
+  const icmsEntradaTipo      = p.icmsEntradaTipo      ?? 'nenhum';
+  const icmsEntradaAliquota  = p.icmsEntradaAliquotaOverride ?? p.icmsEntradaAliquota ?? 0;
+  const icmsEntradaVal       = precoCompra * icmsEntradaAliquota / 100;
+  const ICMS_TIPO_LABEL = { ST:'Substituição Tributária', antecipacao:'Antecipação Parcial', nenhum:'Sem incidência' };
+
+  // ── CMV: usa a MESMA função das demais telas (tabela/impressão/lista), para nunca divergir.
+  const cmv = calcCustoEfetivo(p, freteVal, icmsRegular, ipi);
+  const custoContabil = cmv;
+
+  // ── PREÇO DE VENDA ────────────────────────────────
+  const precoVenda     = p.ajuste || calcPreco(cmv, alq, m);
+
+  // PIS/COFINS na saída só incide se for obrigatório pela classificação fiscal do NCM (Tabela TIPI/NCM_FISCAL).
+  // CST '06' (alíquota zero) e '07' (isento) não geram débito. Sem classificação, assume obrigatório (mais seguro).
+  const pisCofinsObrigatorio = !fiscal?.pisCofins || !['06','07'].includes(fiscal.pisCofins);
+
+  // Impostos na saída por regime
+  let pisDebito = 0, cofinsDebito = 0, icmsDebito = 0, irpjCsll = 0;
+  if (regime === 'LP') {
+    if (pisCofinsObrigatorio) {
+      pisDebito    = precoVenda * LP.pis;
+      cofinsDebito = precoVenda * LP.cofins;
+    }
+    // ICMS de saída não é debitado aqui para Lucro Presumido (a critério do cliente).
+    irpjCsll     = precoVenda * (LP.irpj_base * LP.irpj_rate + LP.csll_base * 0.09);
+  } else if (regime === 'LR') {
+    if (pisCofinsObrigatorio) {
+      pisDebito    = precoVenda * LR.pis;
+      cofinsDebito = precoVenda * LR.cofins;
+    }
+    icmsDebito   = precoVenda * LR.icms;
+  } else if (regime === 'SN') {
+    irpjCsll     = precoVenda * alq;
+  }
+  // MEI: sem imposto sobre venda
+
+  const comissaoPct    = p.comissao       ?? 0;
+  const descontoVenda  = p.descontoVenda  ?? 0;
+  const comissaoVal    = precoVenda * comissaoPct / 100;
+  const totalImpostos  = pisDebito + cofinsDebito + icmsDebito + irpjCsll;
+  const totalDespOper  = precoVenda * despPct / 100;
+  const precoVista     = precoVenda - descontoVenda;
+  const lucroLiquido   = precoVenda - cmv - totalImpostos - comissaoVal - totalDespOper;
+  const mcPct          = precoVenda > 0 ? (lucroLiquido / precoVenda) * 100 : 0;
+  const markup         = cmv > 0 ? ((precoVenda / cmv - 1) * 100) : 0;
+
+  const sInp = (field, val, max, step, placeholder) =>
+    `<input type="number" value="${val||''}" placeholder="${placeholder||'0,00'}" min="0" max="${max||9999}" step="${step||'0.01'}"
+      onchange="produtos[${idx}].${field}=parseFloat(this.value)||0;renderSidebar();"
+      class="sb-inp w-full px-2 py-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-1 focus:ring-emerald-500 outline-none text-slate-700 dark:text-slate-200">`;
+
+  const row = (label, val, color, sign) =>
+    `<div class="flex items-center justify-between py-1.5 border-b border-slate-100 dark:border-slate-800 last:border-0">
+      <span class="text-[11px] text-slate-500 dark:text-slate-400"><span class="font-bold ${sign==='-'?'text-red-400':'text-blue-400'}">(${sign||'+'})</span> ${label}</span>
+      <span class="text-[11px] font-bold ${color||'text-slate-700 dark:text-slate-200'}">${fmtBRL(val)}</span>
+    </div>`;
+
+  const total = (label, val, color) =>
+    `<div class="flex items-center justify-between pt-2 mt-1 border-t-2 border-slate-200 dark:border-slate-700">
+      <span class="text-[11px] font-extrabold text-slate-600 dark:text-slate-300"><span class="text-slate-400">(=)</span> ${label}</span>
+      <span class="text-sm font-extrabold ${color||'text-slate-800 dark:text-white'}">${fmtBRL(val)}</span>
+    </div>`;
+
+  const regimeLabel = { MEI:'MEI', SN:'Simples Nacional', LP:'Lucro Presumido', LR:'Lucro Real' };
+
+  document.getElementById('sidebar-detail').innerHTML = `
+  <div class="space-y-3 pb-4">
+
+    <!-- HEADER -->
+    <div class="flex items-start justify-between gap-2">
+      <div>
+        <h3 class="text-sm font-extrabold text-slate-800 dark:text-white leading-tight">${p.descricao}</h3>
+        <div class="flex flex-wrap gap-1.5 mt-1 text-[10px] text-slate-400 items-center">
+          <span class="font-mono">NCM ${p.ncm}</span>
+          <span>Qtd: <strong>${p.qCom}</strong></span>
+          <span class="px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 font-bold">${regimeLabel[regime]||regime}</span>
+          ${(p.cstXml || p.csosnXml)
+            ? `<span class="px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-bold">${p.csosnXml ? 'CSOSN' : 'CST'} ${p.cstXml || p.csosnXml} <span class="opacity-70 font-normal">do XML</span></span>`
+            : fiscal ? `<span class="px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 font-bold">CST ${fiscal.cst} (estimado)</span>` : ''}
+          ${fiscal?.st   ? `<span class="px-1.5 py-0.5 rounded-full bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 font-bold">ST</span>` : ''}
+          ${fiscal?.isen ? `<span class="px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 font-bold">Isento</span>` : ''}
+          ${fiscal?.pisCofins ? `<span class="px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-bold">PIS/COF ${fiscal.pisCofins}</span>` : ''}
+          ${fiscal?.cat  ? `<span class="text-slate-400 italic">${fiscal.cat}</span>` : ''}
+        </div>
+      </div>
+      <div class="flex gap-1 shrink-0">
+        <button onclick="selectedProductIdx=Math.max(0,${idx}-1);renderSidebar();"
+          class="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[10px] font-bold ${idx===0?'opacity-30 pointer-events-none':'hover:bg-slate-200 dark:hover:bg-slate-700'} transition-all flex items-center gap-0.5">
+          <i data-lucide="chevron-left" class="w-3 h-3"></i>
+        </button>
+        <span class="px-2 py-1 text-[10px] text-slate-400">${idx+1}/${produtos.length}</span>
+        <button onclick="selectedProductIdx=Math.min(produtos.length-1,${idx}+1);renderSidebar();"
+          class="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[10px] font-bold ${idx===produtos.length-1?'opacity-30 pointer-events-none':'hover:bg-slate-200 dark:hover:bg-slate-700'} transition-all flex items-center gap-0.5">
+          <i data-lucide="chevron-right" class="w-3 h-3"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- ① CUSTO DE ENTRADA -->
+    <div class="bg-white dark:bg-[#0f172a] border border-blue-200 dark:border-blue-900/40 rounded-xl overflow-hidden">
+      <div class="bg-blue-50 dark:bg-blue-950/30 px-4 py-2 flex items-center gap-2 border-b border-blue-200 dark:border-blue-900/40">
+        <i data-lucide="package" class="w-3.5 h-3.5 text-blue-500"></i>
+        <span class="text-[11px] font-extrabold text-blue-700 dark:text-blue-300 uppercase tracking-wider">Custo de Entrada</span>
+        ${p.ufOrigem ? `<span class="ml-auto text-[9px] font-mono text-slate-400">UF origem: ${p.ufOrigem}</span>` : ''}
+      </div>
+      <div class="p-3 space-y-1">
+        <div class="grid grid-cols-2 gap-2 mb-2">
+          <div>
+            <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Preço de Compra (R$)<span class="ml-1 text-blue-400 normal-case font-normal">do XML</span></div>
+            <div class="px-2 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg">${fmtBRL(precoCompra)}</div>
+          </div>
+          <div>
+            <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">(-) Desconto (R$)${p.desconto>0?'<span class="ml-1 text-blue-400 normal-case font-normal">do XML</span>':''}</div>
+            ${sInp('desconto', desconto||'', 9999, '0.01')}
+          </div>
+          <div>
+            <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">(+) Frete Entrada (R$)${p.freteXml>0?'<span class="ml-1 text-blue-400 normal-case font-normal">do XML</span>':''}</div>
+            <input type="number" value="${f.toFixed(2)}" placeholder="0,00" min="0" step="0.01"
+              onchange="produtos[${idx}].freteRS=parseFloat(this.value)||0;renderSidebar();"
+              class="sb-inp w-full px-2 py-1.5 text-xs bg-white dark:bg-slate-900 border ${p.freteXml>0?'border-blue-300 dark:border-blue-700':'border-slate-200 dark:border-slate-700'} rounded-lg focus:ring-1 focus:ring-emerald-500 outline-none text-slate-700 dark:text-slate-200">
+          </div>
+          <div>
+            <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">(+) Outras Despesas (R$)${p.outrasDespesas>0?'<span class="ml-1 text-blue-400 normal-case font-normal">do XML</span>':''}</div>
+            ${sInp('outrasDespesas', outrasDespesas||'', 9999, '0.01')}
+          </div>
+        </div>
+        ${row('Preço de Compra', precoCompra, '')}
+        ${desconto > 0 ? row('Desconto', desconto, 'text-red-400', '-') : ''}
+        ${freteVal > 0 ? row('Frete (rateado)', freteVal, '') : ''}
+        ${outrasDespesas > 0 ? row('Outras Despesas', outrasDespesas, '') : ''}
+        ${p.icmsEntradaPct != null ? `
+          <div class="flex items-center justify-between py-1.5 px-2 mt-1 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-900/40">
+            <span class="text-[10px] text-blue-700 dark:text-blue-400 font-bold">ICMS cobrado pelo fornecedor (da nota)</span>
+            <span class="text-[11px] font-extrabold text-blue-600 dark:text-blue-400">${p.icmsEntradaPct.toFixed(2)}%</span>
+          </div>` : `
+          <div class="text-[9px] text-amber-500 italic pt-1">Nota sem pICMS/vICMS legível — usando ${icmsE}% padrão configurado.</div>`}
+      </div>
+    </div>
+
+    ${(icmsDesonerado > 0 || p.motDesICMS || p.isufDestinatario) ? `
+    <!-- SUFRAMA / ICMS DESONERADO — PAINEL DE TRANSPARÊNCIA -->
+    <div class="bg-white dark:bg-[#0f172a] border border-emerald-200 dark:border-emerald-900/40 rounded-xl overflow-hidden">
+      <div class="bg-emerald-50 dark:bg-emerald-950/20 px-4 py-2 flex items-center gap-2 border-b border-emerald-200 dark:border-emerald-900/40">
+        <i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-500"></i>
+        <span class="text-[11px] font-extrabold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">Suframa / ICMS Desonerado</span>
+      </div>
+      <div class="p-3 space-y-1.5">
+        <div class="grid grid-cols-2 gap-2 text-[11px]">
+          <div class="bg-slate-50 dark:bg-slate-900 rounded-lg p-2">
+            <div class="text-[9px] text-slate-400 uppercase font-bold mb-0.5">Inscrição Suframa (destinatário)</div>
+            <div class="font-bold text-slate-700 dark:text-slate-200">${p.isufDestinatario || '— não informada na nota'}</div>
+          </div>
+          <div class="bg-slate-50 dark:bg-slate-900 rounded-lg p-2">
+            <div class="text-[9px] text-slate-400 uppercase font-bold mb-0.5">Motivo da Desoneração</div>
+            <div class="font-bold text-slate-700 dark:text-slate-200">${p.motDesICMS ? `${p.motDesICMS} — ${MOT_DESONERACAO_LABEL[p.motDesICMS] || 'Código não catalogado'}` : '— não informado na nota'}</div>
+          </div>
+        </div>
+        ${row('Valor ICMS Desonerado (vICMSDeson, do XML)', icmsDesonerado, 'text-emerald-500')}
+        <div class="text-[9px] text-slate-400 italic pt-1">Esses dados vêm direto da nota fiscal (grupo ICMS do item e dados do destinatário) — não há estimativa aqui. O valor desonerado é descontado automaticamente do CMV abaixo.</div>
+      </div>
+    </div>` : ''}
+
+    <!-- ② ICMS DE ENTRADA — AUTOMAÇÃO FISCAL (NCM + UF ORIGEM) -->
+    <div class="bg-white dark:bg-[#0f172a] border border-orange-200 dark:border-orange-900/40 rounded-xl overflow-hidden">
+      <div class="bg-orange-50 dark:bg-orange-950/20 px-4 py-2 flex items-center gap-2 border-b border-orange-200 dark:border-orange-900/40">
+        <i data-lucide="landmark" class="w-3.5 h-3.5 text-orange-500"></i>
+        <span class="text-[11px] font-extrabold text-orange-700 dark:text-orange-300 uppercase tracking-wider">ICMS de Entrada — Estado do Acre</span>
+      </div>
+      <div class="p-3 space-y-1">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${icmsEntradaTipo==='ST'?'bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400':icmsEntradaTipo==='antecipacao'?'bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400':'bg-slate-100 dark:bg-slate-800 text-slate-400'}">
+            ${ICMS_TIPO_LABEL[icmsEntradaTipo] || icmsEntradaTipo}
+          </span>
+          <span class="text-[10px] text-slate-400">NCM ${p.ncm} · origem ${p.ufOrigem || '—'}</span>
+          ${p.cestResolvido
+            ? `<span class="px-1.5 py-0.5 rounded-full ${p.cestFonte==='xml'?'bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400':'bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400'} text-[9px] font-bold">CEST ${p.cestResolvido} ${p.cestFonte==='xml' ? '(da nota)' : '(consultado na normativa AC)'}</span>`
+            : `<span class="px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 text-[9px] font-bold">Sem CEST (nota e normativa)</span>`}
+          ${p.icmsEntradaAliquotaInterestadual != null ? `<span class="px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 text-[9px] font-bold">Alíq. interestadual: ${p.icmsEntradaAliquotaInterestadual}%${Number(p.origCodigo) ? ' (importado)' : ''}</span>` : ''}
+        </div>
+        ${p.cestDivergente ? `
+          <div class="flex items-center gap-1.5 text-[10px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-lg px-2 py-1.5 mb-2">
+            <i data-lucide="alert-triangle" class="w-3 h-3 shrink-0"></i>
+            CEST da nota (${formatCest(p.cest)}) diverge do CEST oficial na normativa AC para o NCM ${p.ncm} (${formatCest(ICMS_AC_CEST_NCM[normalizeDigits(p.ncm).slice(0,4)])}). Confira manualmente.
+          </div>` : ''}
+        <div class="grid grid-cols-2 gap-2 mb-2">
+          <div>
+            <div class="text-[9px] font-bold text-orange-400 uppercase tracking-wider mb-1">Alíquota Automática (%)</div>
+            <input type="number" value="${icmsEntradaAliquota}" min="0" max="100" step="0.1"
+              onchange="produtos[${idx}].icmsEntradaAliquotaOverride=parseFloat(this.value)||0;renderSidebar();"
+              class="sb-inp w-full px-2 py-1.5 text-xs bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-lg focus:ring-1 focus:ring-orange-400 outline-none text-orange-700 dark:text-orange-300 font-bold">
+          </div>
+          <div>
+            <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Valor Calculado (R$)</div>
+            <div class="px-2 py-1.5 text-xs font-bold text-orange-700 dark:text-orange-300 bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-lg">${fmtBRL(icmsEntradaVal)}</div>
+          </div>
+        </div>
+        ${icmsEntradaVal > 0 ? row(`ICMS Entrada (${icmsEntradaAliquota}% sobre R$ ${precoCompra.toFixed(2)})`, icmsEntradaVal, 'text-orange-500') : `<div class="text-[10px] text-slate-400 py-1 italic">${!p.cestResolvido ? 'NCM sem CEST — não consta na nota nem na normativa do Acre (IN DIAT 1/2023). Sem base legal para ST/Antecipação.' : 'Sem incidência de ICMS-ST/Antecipação para este item (operação interna ou NCM isento).'}</div>`}
+        <div class="flex items-center justify-between pt-2 mt-1 border-t-2 border-slate-200 dark:border-slate-700">
+          <span class="text-[11px] font-extrabold text-slate-600 dark:text-slate-300"><span class="text-slate-400">(=)</span> CMV (Custo da Mercadoria)</span>
+          <span class="text-sm font-extrabold text-blue-700 dark:text-blue-300">${fmtBRL(cmv)}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ③ PREÇO DE VENDA -->
+    <div class="bg-white dark:bg-[#0f172a] border border-emerald-200 dark:border-emerald-900/40 rounded-xl overflow-hidden">
+      <div class="bg-emerald-50 dark:bg-emerald-950/20 px-4 py-2 flex items-center gap-2 border-b border-emerald-200 dark:border-emerald-900/40">
+        <i data-lucide="tag" class="w-3.5 h-3.5 text-emerald-500"></i>
+        <span class="text-[11px] font-extrabold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">Preço de Venda</span>
+      </div>
+      <div class="p-3 space-y-1">
+        <div class="grid grid-cols-2 gap-2 mb-2">
+          <div>
+            <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Margem Desejada (%)</div>
+            <input type="number" value="${m}" min="0" max="300" step="0.5"
+              onchange="produtos[${idx}].margemCustom=parseFloat(this.value)||0;renderSidebar();"
+              class="sb-inp w-full px-2 py-1.5 text-xs bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded-lg focus:ring-1 focus:ring-emerald-500 outline-none text-emerald-700 dark:text-emerald-300 font-bold">
+          </div>
+          <div>
+            <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Preço de Venda Sugerido</div>
+            <div class="px-2 py-1.5 text-xs font-extrabold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-lg">${fmtBRL(precoVenda)}</div>
+          </div>
+          <div>
+            <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">(-) Desconto na Venda (R$)</div>
+            ${sInp('descontoVenda', descontoVenda||'', 9999, '0.01')}
+          </div>
+          <div>
+            <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Preço à Vista</div>
+            <div class="px-2 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg">${fmtBRL(precoVista)}</div>
+          </div>
+        </div>
+
+        <!-- CST SAÍDA -->
+        <div class="bg-red-50 dark:bg-red-950/10 rounded-lg p-3 border border-red-100 dark:border-red-900/30 mt-2">
+          <div class="text-[10px] font-extrabold text-red-600 dark:text-red-400 uppercase tracking-wider mb-2">CST Saída — Impostos sobre a Venda</div>
+          ${regime === 'LP' ? `
+            ${row('IRPJ/CSLL (Lucro Presumido)', irpjCsll, 'text-red-500')}
+            ${pisCofinsObrigatorio ? `
+              ${row(`Débito PIS (${(LP.pis*100).toFixed(2)}%)`, pisDebito, 'text-red-500')}
+              ${row(`Débito COFINS (${(LP.cofins*100).toFixed(1)}%)`, cofinsDebito, 'text-red-500')}
+            ` : `<div class="text-[10px] text-slate-400 py-1 italic">PIS/COFINS isento/alíquota zero para este NCM (CST ${fiscal?.pisCofins}) — sem débito.</div>`}
+          ` : regime === 'LR' ? `
+            ${row(`Débito ICMS (${(LR.icms*100).toFixed(1)}%)`, icmsDebito, 'text-red-500')}
+            ${pisCofinsObrigatorio ? `
+              ${row(`Débito PIS não-cum. (${(LR.pis*100).toFixed(2)}%)`, pisDebito, 'text-red-500')}
+              ${row(`Débito COFINS não-cum. (${(LR.cofins*100).toFixed(1)}%)`, cofinsDebito, 'text-red-500')}
+            ` : `<div class="text-[10px] text-slate-400 py-1 italic">PIS/COFINS isento/alíquota zero para este NCM (CST ${fiscal?.pisCofins}) — sem débito.</div>`}
+          ` : regime === 'SN' ? `
+            ${row(`Simples Nacional (${(alq*100).toFixed(2)}%)`, irpjCsll, 'text-red-500')}
+          ` : `
+            <div class="text-[10px] text-slate-400 italic">MEI: DAS fixo mensal — sem imposto sobre a venda.</div>
+          `}
+          <div class="grid grid-cols-2 gap-2 mt-2">
+            <div>
+              <div class="text-[9px] font-bold text-slate-400 uppercase mb-1">(+) Comissão (%)</div>
+              ${sInp('comissao', comissaoPct||'', 50, '0.5')}
+            </div>
+            <div>
+              <div class="text-[9px] font-bold text-slate-400 uppercase mb-1">(+) Desp. Operacionais</div>
+              <div class="px-2 py-1.5 text-xs text-orange-600 dark:text-orange-400 font-bold bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-900/30 rounded-lg">${despPct > 0 ? despPct.toFixed(2)+'% = '+fmtBRL(totalDespOper) : '0% — não configurado'}</div>
+            </div>
+          </div>
+          ${comissaoVal > 0 ? row(`Comissão (${comissaoPct}%)`, comissaoVal, 'text-red-500') : ''}
+          ${despPct > 0 ? row(`Desp. Operacionais (${despPct.toFixed(1)}%)`, totalDespOper, 'text-orange-500') : ''}
+        </div>
+
+        <!-- Ajuste manual -->
+        <div class="pt-1">
+          <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Preço Ajustado Manualmente (opcional)</div>
+          <input type="number" value="${p.ajuste || ''}" placeholder="Deixe vazio para usar o sugerido"
+            onchange="produtos[${idx}].ajuste=parseFloat(this.value)||null;renderSidebar();"
+            class="w-full px-2 py-1.5 text-xs bg-slate-50 dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-600 rounded-lg focus:ring-1 focus:ring-blue-500 outline-none text-slate-600 dark:text-slate-300">
+        </div>
+      </div>
+    </div>
+
+    <!-- ④ RESULTADO / MARGEM DE CONTRIBUIÇÃO -->
+    <div class="bg-gradient-to-br ${mcPct >= 20 ? 'from-emerald-600 to-teal-700' : mcPct >= 10 ? 'from-amber-500 to-orange-600' : 'from-red-500 to-rose-700'} rounded-xl p-4 text-white">
+      <div class="flex items-center gap-2 mb-3">
+        <i data-lucide="trending-up" class="w-4 h-4"></i>
+        <span class="text-[11px] font-extrabold uppercase tracking-wider">Resultado — Margem de Contribuição</span>
+      </div>
+      <div class="grid grid-cols-3 gap-2 text-center">
+        <div class="bg-white/15 rounded-lg p-2">
+          <div class="text-[9px] opacity-80 mb-0.5 uppercase">CMV</div>
+          <div class="text-sm font-extrabold">${fmtBRL(cmv)}</div>
+        </div>
+        <div class="bg-white/15 rounded-lg p-2">
+          <div class="text-[9px] opacity-80 mb-0.5 uppercase">Impostos</div>
+          <div class="text-sm font-extrabold">${fmtBRL(totalImpostos)}</div>
+        </div>
+        <div class="bg-white/20 rounded-lg p-2 border border-white/30">
+          <div class="text-[9px] opacity-80 mb-0.5 uppercase">Lucro Líq.</div>
+          <div class="text-sm font-extrabold">${fmtBRL(lucroLiquido)}</div>
+        </div>
+      </div>
+      <div class="mt-3 flex items-center justify-between">
+        <div>
+          <div class="text-[9px] opacity-70 uppercase">Preço de Venda</div>
+          <div class="text-xl font-extrabold">${fmtBRL(precoVenda)}</div>
+          <div class="text-[9px] opacity-70 mt-0.5">× ${p.qCom} un = ${fmtBRL(precoVenda * p.qCom)}</div>
+        </div>
+        <div class="text-right">
+          <div class="text-[9px] opacity-70 uppercase">Margem (% sobre a venda)</div>
+          <div class="text-3xl font-extrabold">${mcPct.toFixed(1)}%</div>
+        </div>
+      </div>
+      <div class="mt-2 pt-2 border-t border-white/20 flex items-center justify-between text-[10px]">
+        <span class="opacity-80">Markup (% sobre o custo de R$ ${cmv.toFixed(2)})</span>
+        <span class="font-bold">${markup.toFixed(1)}% &nbsp;=&nbsp; ${fmtBRL(precoVenda - cmv)} a mais que o custo</span>
+      </div>
+    </div>
+
+  </div>`;
+  lucide.createIcons();
+}
+
+function toast(msg, type = 'info') {
+  const colors = {
+    success: 'bg-emerald-600 text-white',
+    error:   'bg-red-600 text-white',
+    warning: 'bg-amber-500 text-black',
+    info:    'bg-slate-800 text-white',
+  };
+  const icons = { success:'check-circle', error:'x-circle', warning:'alert-triangle', info:'info' };
+  const el = document.createElement('div');
+  el.className = `flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg text-xs font-bold ${colors[type]} cursor-pointer select-none`;
+  el.style.cssText = 'animation:slideIn 0.3s ease;max-width:340px;';
+  el.innerHTML = `<i data-lucide="${icons[type]}" class="w-4 h-4 shrink-0"></i><span>${msg}</span>`;
+  el.onclick = () => el.remove();
+  document.getElementById('toast-container').appendChild(el);
+  lucide.createIcons();
+  setTimeout(() => { el.style.animation = 'slideOut 0.3s ease forwards'; setTimeout(() => el.remove(), 300); }, 4000);
+}
+</script>
+
+<!-- ══ BOTÃO WHATSAPP FLUTUANTE ══ -->
+<a id="whatsapp-fab"
+   href="#"
+   onclick="abrirWhatsApp(event)"
+   title="Suporte via WhatsApp"
+   class="no-print fixed bottom-6 right-6 z-[999] w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition-all hover:scale-110 active:scale-95"
+   style="background:#25D366;">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" width="28" height="28">
+    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+  </svg>
+</a>
+
+<script>
+function abrirWhatsApp(e) {
+  e.preventDefault();
+  const num = typeof WHATSAPP_NUMERO !== 'undefined' ? WHATSAPP_NUMERO : '55XXXXXXXXXXX';
+  if (num.includes('XXXXXXXXX')) {
+    return; // número não configurado ainda
+  }
+  const msg = encodeURIComponent('Olá! Preciso de suporte no GestorFiscal PRO.');
+  window.open('https://wa.me/' + num + '?text=' + msg, '_blank');
+}
+</script>
+</body>
+</html>
