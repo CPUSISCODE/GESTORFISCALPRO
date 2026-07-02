@@ -521,10 +521,10 @@ input[type=range] { accent-color:#10b981; }
       <p class="text-xs text-slate-400 mt-2">Isso pode levar alguns instantes após o pagamento.</p>
     </div>
 
-    <button id="btn-pay" onclick="goToStripe()" class="w-full py-3.5 rounded-2xl text-sm font-extrabold bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 mb-3">
+    <button id="btn-pay" onclick="goToMercadoPago()" class="w-full py-3.5 rounded-2xl text-sm font-extrabold bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 mb-3">
       <i data-lucide="credit-card" class="w-4 h-4"></i> Adquirir Licença
     </button>
-    <p class="text-[11px] text-center text-slate-400 mb-2">Pagamento seguro via Stripe 🔒</p>
+    <p class="text-[11px] text-center text-slate-400 mb-2">Pagamento seguro via Mercado Pago 🔒</p>
     <p class="text-[11px] text-center text-slate-400 mb-4">Precisa de ajuda? Fale pelo <button onclick="abrirWhatsApp(event)" class="text-emerald-500 font-bold hover:underline">WhatsApp</button></p>
     <button onclick="doLogout()" class="w-full py-2.5 rounded-xl text-sm font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-all">
       Sair da conta
@@ -549,9 +549,14 @@ input[type=range] { accent-color:#10b981; }
           <p class="text-xs text-slate-400">GestorFiscal PRO — Gestão de contas</p>
         </div>
       </div>
-      <button onclick="closeAdminPanel()" class="px-4 py-2 rounded-xl text-sm font-bold bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 transition-all flex items-center gap-1.5">
-        <i data-lucide="x" class="w-4 h-4"></i> Fechar
-      </button>
+      <div class="flex gap-2">
+        <button onclick="openAdminCreate()" class="px-4 py-2 rounded-xl text-sm font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-all flex items-center gap-1.5">
+          <i data-lucide="user-plus" class="w-4 h-4"></i> Novo usuário
+        </button>
+        <button onclick="closeAdminPanel()" class="px-4 py-2 rounded-xl text-sm font-bold bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 transition-all flex items-center gap-1.5">
+          <i data-lucide="x" class="w-4 h-4"></i> Fechar
+        </button>
+      </div>
     </div>
 
     <!-- Stats rápidas -->
@@ -571,6 +576,192 @@ input[type=range] { accent-color:#10b981; }
         <i data-lucide="loader-2" class="w-6 h-6 spinner mx-auto mb-2"></i> Carregando…
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     MODAL: EDITAR USUÁRIO (ADMIN)
+══════════════════════════════════════════════ -->
+<div id="modal-admin-edit" class="hidden fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 no-print overflow-y-auto py-8">
+  <div class="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl anim-up relative overflow-hidden">
+    <div class="absolute top-0 left-0 w-full h-1.5 admin-badge"></div>
+    <div class="flex items-center justify-between mb-5">
+      <div class="flex items-center gap-2">
+        <div class="w-9 h-9 rounded-xl admin-badge flex items-center justify-center"><i data-lucide="user-cog" class="w-4 h-4 text-white"></i></div>
+        <div>
+          <h3 class="text-sm font-extrabold text-slate-800 dark:text-white">Editar usuário</h3>
+          <p class="text-[11px] text-slate-400" id="ae-email">—</p>
+        </div>
+      </div>
+      <button onclick="closeAdminEdit()" class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"><i data-lucide="x" class="w-4 h-4"></i></button>
+    </div>
+
+    <input type="hidden" id="ae-user-id">
+
+    <div class="space-y-3">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Razão Social</label>
+          <input type="text" id="ae-nome" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">CNPJ</label>
+          <input type="text" id="ae-cnpj" maxlength="18" oninput="maskCNPJ(this)" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">UF</label>
+          <input type="text" id="ae-uf" maxlength="2" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm uppercase focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Cidade</label>
+          <input type="text" id="ae-cidade" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+      </div>
+      <div>
+        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Regime Tributário</label>
+        <select id="ae-regime" onchange="onAeRegimeChange()" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+          <option value="MEI">MEI — Microempreendedor Individual</option>
+          <option value="SN">Simples Nacional</option>
+          <option value="LP">Lucro Presumido</option>
+          <option value="LR">Lucro Real</option>
+        </select>
+      </div>
+      <div id="ae-sn-block" class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Anexo Simples</label>
+          <select id="ae-sn-anexo" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            <option value="I">Anexo I (Comércio)</option>
+            <option value="II">Anexo II (Indústria)</option>
+            <option value="III">Anexo III</option>
+            <option value="IV">Anexo IV</option>
+            <option value="V">Anexo V</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Receita Bruta 12m (R$)</label>
+          <input type="number" id="ae-rba" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+      </div>
+
+      <div class="border-t border-slate-200 dark:border-slate-800 pt-3 mt-1">
+        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center gap-1"><i data-lucide="key-round" class="w-3 h-3"></i> Nova senha (opcional)</label>
+        <input type="text" id="ae-password" placeholder="Deixe em branco para não alterar" autocomplete="off" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        <p class="text-[10px] text-slate-400 mt-1">Mín. 6 caracteres. A senha é trocada com segurança no servidor.</p>
+      </div>
+    </div>
+
+    <div class="flex gap-2 mt-5">
+      <button onclick="closeAdminEdit()" class="flex-1 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-xs transition-all">Cancelar</button>
+      <button onclick="saveAdminEdit()" id="btn-ae-save" class="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5">
+        <i data-lucide="save" class="w-3.5 h-3.5" id="icon-ae-save"></i>
+        <span id="label-ae-save">Salvar alterações</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     MODAL: NOVO USUÁRIO (ADMIN)
+══════════════════════════════════════════════ -->
+<div id="modal-admin-create" class="hidden fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 no-print overflow-y-auto py-8">
+  <div class="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl anim-up relative overflow-hidden">
+    <div class="absolute top-0 left-0 w-full h-1.5 admin-badge"></div>
+    <div class="flex items-center justify-between mb-5">
+      <div class="flex items-center gap-2">
+        <div class="w-9 h-9 rounded-xl admin-badge flex items-center justify-center"><i data-lucide="user-plus" class="w-4 h-4 text-white"></i></div>
+        <h3 class="text-sm font-extrabold text-slate-800 dark:text-white">Novo usuário / login</h3>
+      </div>
+      <button onclick="closeAdminCreate()" class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"><i data-lucide="x" class="w-4 h-4"></i></button>
+    </div>
+
+    <div class="space-y-3">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">E-mail (login) *</label>
+          <input type="email" id="ac-email" autocomplete="off" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="usuario@empresa.com">
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Senha inicial *</label>
+          <input type="text" id="ac-password" autocomplete="off" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="mín. 6 caracteres">
+        </div>
+      </div>
+      <div>
+        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Razão Social / Nome</label>
+        <input type="text" id="ac-nome" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">CNPJ</label>
+          <input type="text" id="ac-cnpj" maxlength="18" oninput="maskCNPJ(this)" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Regime</label>
+          <select id="ac-regime" onchange="onAcRegimeChange()" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            <option value="MEI">MEI</option>
+            <option value="SN" selected>Simples Nacional</option>
+            <option value="LP">Lucro Presumido</option>
+            <option value="LR">Lucro Real</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">UF</label>
+          <input type="text" id="ac-uf" maxlength="2" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm uppercase focus:outline-none focus:ring-2 focus:ring-emerald-500" value="AC">
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Cidade</label>
+          <input type="text" id="ac-cidade" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+      </div>
+      <div id="ac-sn-block" class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Anexo Simples</label>
+          <select id="ac-sn-anexo" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            <option value="I">Anexo I</option><option value="II">Anexo II</option><option value="III">Anexo III</option><option value="IV">Anexo IV</option><option value="V">Anexo V</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Status inicial</label>
+          <select id="ac-status" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            <option value="active" selected>Ativo (acesso liberado)</option>
+            <option value="pending_payment">Aguardando pagamento</option>
+            <option value="pending">Aguardando análise</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex gap-2 mt-5">
+      <button onclick="closeAdminCreate()" class="flex-1 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-xs transition-all">Cancelar</button>
+      <button onclick="saveAdminCreate()" id="btn-ac-save" class="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5">
+        <i data-lucide="user-plus" class="w-3.5 h-3.5" id="icon-ac-save"></i>
+        <span id="label-ac-save">Criar usuário</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     MODAL: LOG / MEMÓRIA DE CÁLCULO
+══════════════════════════════════════════════ -->
+<div id="modal-calc-log" class="hidden fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 no-print py-8">
+  <div class="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-lg w-full shadow-2xl anim-up relative overflow-hidden">
+    <div class="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-slate-600 to-slate-800"></div>
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-2">
+        <div class="w-9 h-9 rounded-xl bg-slate-800 dark:bg-slate-700 flex items-center justify-center"><i data-lucide="file-text" class="w-4 h-4 text-white"></i></div>
+        <div>
+          <h3 class="text-sm font-extrabold text-slate-800 dark:text-white">Memória de Cálculo</h3>
+          <p class="text-[11px] text-slate-400">O rastro matemático completo do preço</p>
+        </div>
+      </div>
+      <button onclick="closeCalcLog()" class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"><i data-lucide="x" class="w-4 h-4"></i></button>
+    </div>
+    <pre id="calc-log-content" class="text-[11px] leading-relaxed font-mono bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-800 rounded-xl p-4 overflow-x-auto whitespace-pre text-slate-700 dark:text-slate-200 max-h-[60vh]"></pre>
+    <button onclick="closeCalcLog()" class="w-full mt-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all">Fechar</button>
   </div>
 </div>
 
@@ -797,6 +988,7 @@ input[type=range] { accent-color:#10b981; }
         <button onclick="setCfgTab('calculo')"  id="ctab-calculo"  class="cfg-tab-btn px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800"><i data-lucide="calculator" class="w-3 h-3"></i> Cálculo</button>
         <button onclick="setCfgTab('despesas')" id="ctab-despesas" class="cfg-tab-btn px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800"><i data-lucide="receipt" class="w-3 h-3"></i> Despesas</button>
         <button onclick="setCfgTab('drive')"    id="ctab-drive"    class="cfg-tab-btn px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800"><i data-lucide="hard-drive" class="w-3 h-3"></i> Drive</button>
+        <button onclick="setCfgTab('erp')"      id="ctab-erp"      class="cfg-tab-btn px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800"><i data-lucide="plug" class="w-3 h-3"></i> PDV/ERP</button>
       </div>
 
       <!-- ─── EMPRESA ─── -->
@@ -957,9 +1149,9 @@ input[type=range] { accent-color:#10b981; }
       </div>
 
       <!-- ─── DRIVE ─── -->
-      <div id="cfg-panel-drive" class="cfg-panel hidden">
+      <div id="cfg-panel-drive" class="cfg-panel hidden space-y-4">
         <div class="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-3">
-          <h3 class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Google Drive</h3>
+          <h3 class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Google Drive — link da pasta</h3>
           <p class="text-xs text-slate-400">Cole o link da pasta do Google Drive com seus XMLs de NF-e.</p>
           <div class="flex gap-2">
             <input type="url" id="cfg-drive" placeholder="https://drive.google.com/drive/folders/..." class="flex-1 px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500">
@@ -967,6 +1159,61 @@ input[type=range] { accent-color:#10b981; }
               <i data-lucide="external-link" class="w-3.5 h-3.5"></i> Abrir
             </button>
           </div>
+        </div>
+
+        <!-- Backup automático de XMLs -->
+        <div class="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-3">
+          <div class="flex items-center justify-between gap-2">
+            <h3 class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+              <i data-lucide="cloud-upload" class="w-3.5 h-3.5 text-emerald-500"></i> Backup automático de XMLs
+            </h3>
+            <span id="drive-status-badge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">Desconectado</span>
+          </div>
+          <p class="text-xs text-slate-400">
+            Ao conectar, cada XML salvo no histórico é enviado automaticamente para o seu Drive,
+            organizado em <span class="font-mono text-slate-500 dark:text-slate-300">Empresa / mês-ano / arquivo.xml</span>.
+          </p>
+          <div id="drive-not-configured" class="hidden text-[11px] text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 rounded-lg p-3">
+            ⚠️ O administrador ainda não configurou o <span class="font-mono">GOOGLE_CLIENT_ID</span> (OAuth). O envio automático fica indisponível até isso ser preenchido no código.
+          </div>
+          <div class="flex gap-2">
+            <button onclick="connectDrive()" id="btn-drive-connect" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all">
+              <i data-lucide="link" class="w-3.5 h-3.5"></i> Conectar Google Drive
+            </button>
+            <button onclick="disconnectDrive()" id="btn-drive-disconnect" class="hidden px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-red-100 dark:hover:bg-red-950/50 text-slate-600 dark:text-slate-300 hover:text-red-500 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all">
+              <i data-lucide="unlink" class="w-3.5 h-3.5"></i> Desconectar
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── PDV / ERP ─── -->
+      <div id="cfg-panel-erp" class="cfg-panel hidden space-y-4">
+        <div class="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-4">
+          <h3 class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+            <i data-lucide="plug" class="w-3.5 h-3.5 text-emerald-500"></i> Integração com PDV / ERP
+          </h3>
+          <p class="text-xs text-slate-400">
+            Cole a chave de API do seu sistema de gestão (ERP/PDV) para importar notas diretamente,
+            sem precisar subir o XML manualmente. Deixe a estrutura pronta — a importação automática
+            é ativada assim que a integração com o seu ERP for concluída.
+          </p>
+          <div>
+            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Sistema ERP / PDV</label>
+            <input type="text" id="cfg-erp-provider" placeholder="Ex: Consinco, TOTVS, Bling, Tiny, Omie…" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">URL da API (endpoint)</label>
+            <input type="url" id="cfg-erp-url" placeholder="https://api.seuerp.com.br/v1" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Chave de API (Token)</label>
+            <input type="password" id="cfg-erp-key" placeholder="Cole aqui a chave de API do seu ERP" autocomplete="off" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono">
+            <p class="text-[10px] text-slate-400 mt-1">🔒 A chave fica associada à sua conta. Nunca a compartilhe publicamente.</p>
+          </div>
+          <button onclick="saveErpConfig()" class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all flex items-center gap-1.5">
+            <i data-lucide="save" class="w-3.5 h-3.5"></i> Salvar integração
+          </button>
         </div>
       </div>
 
@@ -1006,8 +1253,8 @@ input[type=range] { accent-color:#10b981; }
 /* ════════════════════════════════════════════════
    CONSTANTES
 ════════════════════════════════════════════════ */
-const GF_SB_URL = 'https://qaiqflcxfxygynumapyp.supabase.co';
-const GF_SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhaXFmbGN4Znh5Z3ludW1hcHlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1ODQ2NDMsImV4cCI6MjA5NzE2MDY0M30.pAViYST7ZWOVCcIVSGu6GbD005WgoTxQpwCj6iQTYKU';
+const GF_SB_URL = 'https://wnwceqoafxvnyqcostpi.supabase.co';
+const GF_SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indud2NlcW9hZnh2bnlxY29zdHBpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyOTA5OTksImV4cCI6MjA5Njg2Njk5OX0.rrYIu7H0JbnBLSQeJ63diErTjNJemVpY6CqFzu0QgSU';
 const DEMO_EMAIL = 'demo@gestorfiscal.com.br';
 const DEMO_PASS  = 'gestorfiscal2026';
 
@@ -1269,11 +1516,26 @@ const LR = { pis:.0165, cofins:.076, icms:.17 };
    STATE
 ════════════════════════════════════════════════ */
 /* ════════════════════════════════════════════════
-   STRIPE — LINKS POR REGIME (crie no dashboard.stripe.com)
+   MERCADO PAGO — a assinatura é criada dinamicamente pela Edge Function
+   "mp-create-subscription" (usa MP_ACCESS_TOKEN no servidor, nunca no frontend).
+   Ver EDGE_FUNCTION_mercadopago-create-subscription.ts
 ════════════════════════════════════════════════ */
-// Link único para todos os regimes — R$ 100,00/mês
-const STRIPE_LINK_UNIVERSAL = 'https://buy.stripe.com/dRm28q8kfdt7bufa9d00004';
-const STRIPE_LINKS = { MEI: STRIPE_LINK_UNIVERSAL, SN: STRIPE_LINK_UNIVERSAL, LP: STRIPE_LINK_UNIVERSAL, LR: STRIPE_LINK_UNIVERSAL };
+const MP_PRECO_MENSAL = 100; // R$ 100,00/mês — mesmo valor para todos os regimes
+
+/* ════════════════════════════════════════════════
+   GOOGLE DRIVE — backup automático de XMLs
+   Para ativar, crie um OAuth Client ID ("Aplicativo Web") no
+   Google Cloud Console (APIs & Services → Credentials), habilite a
+   "Google Drive API", adicione a URL do app em "Authorized JavaScript
+   origins", e cole o Client ID abaixo. Adicione seu e-mail como
+   "test user" na tela de consentimento enquanto o app não for verificado.
+════════════════════════════════════════════════ */
+const GOOGLE_CLIENT_ID = ''; // ← COLE AQUI o Client ID (ex: '1234-abc.apps.googleusercontent.com')
+// Pasta raiz no Drive onde a estrutura Empresa/mês-ano será criada.
+// ID extraído do link da pasta compartilhada informada pelo cliente.
+const DRIVE_PARENT_FOLDER_ID = '15KRDJASUHSm5ZPUeHuefxIqQQXtau1N5';
+// Escopo amplo é necessário para gravar dentro de uma pasta pré-existente (a compartilhada).
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive';
 
 // WhatsApp de suporte (altere o número abaixo)
 const WHATSAPP_NUMERO = '5519989765398';
@@ -1326,6 +1588,7 @@ let empresaData = {};
 let isDemo = false;
 let produtos = [];
 let currentXmlName = '';
+let currentXmlRaw = '';
 let statusPollTimer = null;
 let isAdmin = false;
 let passwordRecoveryMode = false;
@@ -1541,7 +1804,7 @@ async function afterLogin(user) {
     isAdmin = !!adminRow;
   } catch(e) { isAdmin = false; }
 
-  // Checa se voltou de pagamento Stripe
+  // Checa se voltou de pagamento do Mercado Pago
   const urlParams = new URLSearchParams(window.location.search);
   if (urlParams.get('payment_success') === '1') {
     history.replaceState({}, '', window.location.pathname);
@@ -1692,20 +1955,31 @@ function renderPaymentCard() {
     </ul>`;
 }
 
-function goToStripe() {
-  const regime = empresaData.regime || 'SN';
-  const link   = STRIPE_LINKS[regime] || STRIPE_LINKS.SN;
-  if (link.includes('COLOQUE_LINK')) {
-    toast('Links do Stripe ainda não configurados. Contate o administrador.', 'warning');
-    return;
-  }
-  // client_reference_id é passado via query string — Stripe injeta no checkout.session.completed
-  window.open(`${link}?client_reference_id=${currentUser.id}`, '_blank');
-  document.getElementById('payment-verifying').classList.remove('hidden');
-  document.getElementById('btn-pay').classList.add('opacity-50', 'pointer-events-none');
-  document.getElementById('btn-pay').innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 spinner"></i> Aguardando pagamento…';
+async function goToMercadoPago() {
+  const btn = document.getElementById('btn-pay');
+  btn.classList.add('opacity-50', 'pointer-events-none');
+  btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 spinner"></i> Gerando link de pagamento…';
   lucide.createIcons();
-  startStatusPolling();
+  try {
+    if (!sb) throw new Error('Serviço indisponível.');
+    // back_url: para onde o Mercado Pago devolve o usuário após o checkout.
+    // ?payment_success=1 é o mesmo parâmetro que afterLogin() já sabe interpretar.
+    const backUrl = window.location.origin + window.location.pathname + '?payment_success=1';
+    const { data, error } = await sb.functions.invoke('mp-create-subscription', { body: { back_url: backUrl } });
+    if (error) throw error;
+    if (!data?.init_point) throw new Error(data?.error || 'Link de pagamento não retornado.');
+
+    window.open(data.init_point, '_blank');
+    document.getElementById('payment-verifying').classList.remove('hidden');
+    btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 spinner"></i> Aguardando pagamento…';
+    lucide.createIcons();
+    startStatusPolling();
+  } catch (e) {
+    toast('Erro ao iniciar pagamento: ' + (e.message || e), 'error');
+    btn.classList.remove('opacity-50', 'pointer-events-none');
+    btn.innerHTML = '<i data-lucide="credit-card" class="w-4 h-4"></i> Adquirir Licença';
+    lucide.createIcons();
+  }
 }
 
 /* ─── POLLING DE STATUS ───────────────────────── */
@@ -1805,8 +2079,8 @@ function renderAdminUsers(filter) {
   list.innerHTML = users.map(u => `
     <div class="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex items-center justify-between gap-3">
       <div class="min-w-0">
-        <div class="text-sm font-bold text-slate-700 dark:text-slate-200 truncate">${u.nome || '—'}</div>
-        <div class="text-[11px] text-slate-400 mt-0.5">${u.cnpj || 'CNPJ não informado'} · ${REGIME_LABEL[u.regime] || u.regime || '—'}</div>
+        <div class="text-sm font-bold text-slate-700 dark:text-slate-200 truncate">${escapeHtml(u.nome) || '—'}</div>
+        <div class="text-[11px] text-slate-400 mt-0.5">${escapeHtml(u.cnpj) || 'CNPJ não informado'} · ${escapeHtml(REGIME_LABEL[u.regime] || u.regime) || '—'}</div>
         <div class="mt-1.5 flex items-center gap-2 flex-wrap">
           <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${STATUS_STYLE[u.status] || ''}">${STATUS_LABEL[u.status] || u.status}</span>
           <span class="text-[10px] text-slate-400">${new Date(u.created_at).toLocaleDateString('pt-BR')}</span>
@@ -1825,6 +2099,10 @@ function renderAdminUsers(filter) {
             class="px-3 py-1.5 rounded-lg text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-red-100 dark:hover:bg-red-950/50 hover:text-red-500 transition-all whitespace-nowrap">
             🔒 Suspender
           </button>` : ''}
+        <button onclick="openAdminEdit('${u.user_id}')"
+          class="px-3 py-1.5 rounded-lg text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all whitespace-nowrap flex items-center gap-1">
+          <i data-lucide="pencil" class="w-3 h-3"></i> Editar
+        </button>
       </div>
     </div>`).join('');
   lucide.createIcons();
@@ -1837,6 +2115,115 @@ async function adminActivate(userId, newStatus) {
     toast('Status atualizado com sucesso!', 'success');
     loadAdminData();
   } catch(e) { toast('Erro: ' + e.message, 'error'); }
+}
+
+/* ─── EDITAR USUÁRIO (ADMIN) ──────────────────── */
+function openAdminEdit(userId) {
+  const u = (window._adminAllUsers || []).find(x => x.user_id === userId);
+  if (!u) { toast('Usuário não encontrado.', 'error'); return; }
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val ?? ''; };
+  set('ae-user-id', u.user_id);
+  document.getElementById('ae-email').textContent = u.nome || u.cnpj || u.user_id;
+  set('ae-nome', u.nome);
+  set('ae-cnpj', u.cnpj);
+  set('ae-uf', u.uf);
+  set('ae-cidade', u.cidade);
+  set('ae-regime', u.regime || 'SN');
+  set('ae-sn-anexo', u.sn_anexo || 'I');
+  set('ae-rba', u.sn_rba || 360000);
+  set('ae-password', '');
+  onAeRegimeChange();
+  document.getElementById('modal-admin-edit').classList.remove('hidden');
+  lucide.createIcons();
+}
+
+function closeAdminEdit() {
+  document.getElementById('modal-admin-edit').classList.add('hidden');
+}
+
+function onAeRegimeChange() {
+  const r = document.getElementById('ae-regime').value;
+  document.getElementById('ae-sn-block').classList.toggle('hidden', r !== 'SN');
+}
+
+async function saveAdminEdit() {
+  const userId = document.getElementById('ae-user-id').value;
+  if (!userId) return;
+  const empresa = {
+    nome:     document.getElementById('ae-nome').value.trim(),
+    cnpj:     document.getElementById('ae-cnpj').value.trim(),
+    uf:       document.getElementById('ae-uf').value.trim().toUpperCase(),
+    cidade:   document.getElementById('ae-cidade').value.trim(),
+    regime:   document.getElementById('ae-regime').value,
+    sn_anexo: document.getElementById('ae-sn-anexo').value,
+    sn_rba:   parseFloat(document.getElementById('ae-rba').value) || 360000,
+  };
+  const password = document.getElementById('ae-password').value;
+  if (password && password.length < 6) { toast('A senha deve ter ao menos 6 caracteres.', 'warning'); return; }
+
+  setBtnLoading('btn-ae-save', 'icon-ae-save', 'label-ae-save', true, 'Salvando...');
+  try {
+    const payload = { target_user_id: userId, empresa };
+    if (password) payload.password = password;
+    const { data, error } = await sb.functions.invoke('admin-update-user', { body: payload });
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+    toast('Usuário atualizado com sucesso!' + (password ? ' Senha redefinida.' : ''), 'success');
+    closeAdminEdit();
+    loadAdminData();
+  } catch(e) {
+    toast('Erro ao salvar: ' + (e.message || e), 'error');
+  } finally {
+    setBtnLoading('btn-ae-save', 'icon-ae-save', 'label-ae-save', false);
+  }
+}
+
+/* ─── CRIAR USUÁRIO (ADMIN) ───────────────────── */
+function openAdminCreate() {
+  ['ac-email','ac-password','ac-nome','ac-cnpj','ac-cidade'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  document.getElementById('ac-uf').value = 'AC';
+  document.getElementById('ac-regime').value = 'SN';
+  document.getElementById('ac-sn-anexo').value = 'I';
+  document.getElementById('ac-status').value = 'active';
+  onAcRegimeChange();
+  document.getElementById('modal-admin-create').classList.remove('hidden');
+  lucide.createIcons();
+}
+function closeAdminCreate() { document.getElementById('modal-admin-create').classList.add('hidden'); }
+function onAcRegimeChange() {
+  document.getElementById('ac-sn-block').classList.toggle('hidden', document.getElementById('ac-regime').value !== 'SN');
+}
+
+async function saveAdminCreate() {
+  const email    = document.getElementById('ac-email').value.trim();
+  const password = document.getElementById('ac-password').value;
+  if (!email || !email.includes('@')) { toast('Informe um e-mail válido.', 'warning'); return; }
+  if (password.length < 6) { toast('A senha deve ter ao menos 6 caracteres.', 'warning'); return; }
+
+  const payload = {
+    email, password,
+    nome:     document.getElementById('ac-nome').value.trim(),
+    cnpj:     document.getElementById('ac-cnpj').value.trim(),
+    uf:       document.getElementById('ac-uf').value.trim().toUpperCase(),
+    cidade:   document.getElementById('ac-cidade').value.trim(),
+    regime:   document.getElementById('ac-regime').value,
+    sn_anexo: document.getElementById('ac-sn-anexo').value,
+    status:   document.getElementById('ac-status').value,
+  };
+
+  setBtnLoading('btn-ac-save', 'icon-ac-save', 'label-ac-save', true, 'Criando...');
+  try {
+    const { data, error } = await sb.functions.invoke('admin-create-user', { body: payload });
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+    toast('Usuário criado com sucesso!', 'success');
+    closeAdminCreate();
+    loadAdminData();
+  } catch(e) {
+    toast('Erro ao criar: ' + (e.message || e), 'error');
+  } finally {
+    setBtnLoading('btn-ac-save', 'icon-ac-save', 'label-ac-save', false);
+  }
 }
 
 function loadApp(demo) {
@@ -1888,7 +2275,29 @@ function applyEmpresaToConfig() {
   set('cfg-sn-anexo', empresaData.sn_anexo || 'I');
   set('cfg-rba', empresaData.sn_rba || 360000);
   set('cfg-drive', empresaData.drive_url || '');
+  set('cfg-erp-provider', empresaData.erp_provider || '');
+  set('cfg-erp-url', empresaData.erp_api_url || '');
+  set('cfg-erp-key', empresaData.erp_api_key || '');
   onRegimeChange();
+}
+
+async function saveErpConfig() {
+  empresaData.erp_provider = document.getElementById('cfg-erp-provider').value.trim();
+  empresaData.erp_api_url  = document.getElementById('cfg-erp-url').value.trim();
+  empresaData.erp_api_key  = document.getElementById('cfg-erp-key').value.trim();
+  if (!isDemo && sb && currentUser) {
+    try {
+      const { error } = await sb.from('empresas').update({
+        erp_provider: empresaData.erp_provider,
+        erp_api_url:  empresaData.erp_api_url,
+        erp_api_key:  empresaData.erp_api_key,
+      }).eq('user_id', currentUser.id);
+      if (error) throw error;
+      toast('Integração PDV/ERP salva!', 'success');
+    } catch(e) { toast('Erro ao salvar integração: ' + e.message, 'error'); }
+  } else {
+    toast('Integração salva (modo demo — não persiste).', 'info');
+  }
 }
 
 function onRegimeChange() {
@@ -1943,6 +2352,160 @@ function openDrive() {
 }
 
 /* ════════════════════════════════════════════════
+   GOOGLE DRIVE — OAuth (GIS) + upload de XMLs
+════════════════════════════════════════════════ */
+let driveTokenClient = null;
+let driveAccessToken = null;
+let driveTokenExpiry = 0;
+let gisLoaded = false;
+
+// Carrega o script do Google Identity Services sob demanda.
+function loadGis() {
+  return new Promise((resolve, reject) => {
+    if (gisLoaded && window.google?.accounts?.oauth2) return resolve();
+    const s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.async = true; s.defer = true;
+    s.onload = () => { gisLoaded = true; resolve(); };
+    s.onerror = () => reject(new Error('Falha ao carregar o Google Identity Services.'));
+    document.head.appendChild(s);
+  });
+}
+
+function driveIsConnected() {
+  return !!driveAccessToken && Date.now() < driveTokenExpiry;
+}
+
+function updateDriveUI() {
+  const configured = !!GOOGLE_CLIENT_ID;
+  const badge   = document.getElementById('drive-status-badge');
+  const btnC    = document.getElementById('btn-drive-connect');
+  const btnD    = document.getElementById('btn-drive-disconnect');
+  const warn    = document.getElementById('drive-not-configured');
+  if (warn) warn.classList.toggle('hidden', configured);
+  if (btnC)  btnC.classList.toggle('hidden', !configured || driveIsConnected());
+  if (btnD)  btnD.classList.toggle('hidden', !driveIsConnected());
+  if (badge) {
+    const on = driveIsConnected();
+    badge.textContent = on ? 'Conectado' : 'Desconectado';
+    badge.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full ' +
+      (on ? 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400'
+          : 'bg-slate-100 dark:bg-slate-800 text-slate-500');
+  }
+}
+
+// Solicita um access token. silent=true tenta renovar sem popup.
+function requestDriveToken(silent) {
+  return new Promise(async (resolve, reject) => {
+    try {
+      await loadGis();
+      if (!driveTokenClient) {
+        driveTokenClient = google.accounts.oauth2.initTokenClient({
+          client_id: GOOGLE_CLIENT_ID,
+          scope: DRIVE_SCOPE,
+          callback: (resp) => {
+            if (resp.error) { reject(new Error(resp.error)); return; }
+            driveAccessToken = resp.access_token;
+            driveTokenExpiry = Date.now() + (Number(resp.expires_in || 3600) - 60) * 1000;
+            updateDriveUI();
+            resolve(driveAccessToken);
+          },
+        });
+      } else {
+        driveTokenClient.callback = (resp) => {
+          if (resp.error) { reject(new Error(resp.error)); return; }
+          driveAccessToken = resp.access_token;
+          driveTokenExpiry = Date.now() + (Number(resp.expires_in || 3600) - 60) * 1000;
+          updateDriveUI();
+          resolve(driveAccessToken);
+        };
+      }
+      driveTokenClient.requestAccessToken({ prompt: silent ? '' : 'consent' });
+    } catch(e) { reject(e); }
+  });
+}
+
+async function connectDrive() {
+  if (!GOOGLE_CLIENT_ID) { toast('Google Drive não configurado (falta o Client ID).', 'warning'); return; }
+  try {
+    await requestDriveToken(false);
+    toast('Google Drive conectado! Novos XMLs salvos serão enviados automaticamente.', 'success');
+  } catch(e) {
+    toast('Não foi possível conectar ao Drive: ' + (e.message || e), 'error');
+  }
+}
+
+function disconnectDrive() {
+  if (driveAccessToken && window.google?.accounts?.oauth2) {
+    try { google.accounts.oauth2.revoke(driveAccessToken, () => {}); } catch(e) {}
+  }
+  driveAccessToken = null; driveTokenExpiry = 0;
+  updateDriveUI();
+  toast('Google Drive desconectado.', 'info');
+}
+
+// Garante um token válido (renova em silêncio se expirou).
+async function ensureDriveToken() {
+  if (driveIsConnected()) return driveAccessToken;
+  return await requestDriveToken(true);
+}
+
+// Procura uma subpasta pelo nome dentro de parentId; cria se não existir. Retorna o ID.
+async function driveFindOrCreateFolder(name, parentId, token) {
+  const safeName = name.replace(/'/g, "\\'");
+  const q = encodeURIComponent(
+    `mimeType='application/vnd.google-apps.folder' and name='${safeName}' and '${parentId}' in parents and trashed=false`
+  );
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)&supportsAllDrives=true&includeItemsFromAllDrives=true`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (data.files && data.files.length) return data.files[0].id;
+
+  const createRes = await fetch('https://www.googleapis.com/drive/v3/files?supportsAllDrives=true', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder', parents: [parentId] }),
+  });
+  const created = await createRes.json();
+  if (!created.id) throw new Error(created.error?.message || 'Falha ao criar pasta no Drive.');
+  return created.id;
+}
+
+// Faz upload do XML na estrutura Empresa/competência/arquivo.xml.
+async function uploadXmlToDrive(empresaNome, competencia, filename, xmlContent, notaId) {
+  const token = await ensureDriveToken();
+  // competencia vem como "mm/aaaa" — vira "mm-aaaa" para nome de pasta
+  const compFolder = String(competencia).replace(/\//g, '-');
+  const empresaFolderId = await driveFindOrCreateFolder(empresaNome || 'Empresa', DRIVE_PARENT_FOLDER_ID, token);
+  const compFolderId    = await driveFindOrCreateFolder(compFolder, empresaFolderId, token);
+
+  const metadata = { name: filename || 'nota.xml', parents: [compFolderId] };
+  const boundary = 'gf' + Date.now();
+  const body =
+    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n` +
+    JSON.stringify(metadata) +
+    `\r\n--${boundary}\r\nContent-Type: application/xml\r\n\r\n` +
+    xmlContent +
+    `\r\n--${boundary}--`;
+
+  const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': `multipart/related; boundary=${boundary}` },
+    body,
+  });
+  const uploaded = await res.json();
+  if (!uploaded.id) throw new Error(uploaded.error?.message || 'Falha no upload do XML.');
+
+  // Registra o ID do arquivo do Drive no histórico
+  if (notaId && sb) {
+    try { await sb.from('notas_fiscais').update({ drive_file_id: uploaded.id }).eq('id', notaId); } catch(e) {}
+  }
+  toast(`XML enviado ao Drive: ${empresaNome}/${compFolder}/`, 'success');
+  return uploaded.id;
+}
+
+/* ════════════════════════════════════════════════
    XML PROCESSING
 ════════════════════════════════════════════════ */
 function handleXmlFile(e) { if (e.target.files[0]) processXmlFile(e.target.files[0]); }
@@ -1954,6 +2517,7 @@ function processXmlFile(file) {
   const reader = new FileReader();
   reader.onload = e => {
     try {
+      currentXmlRaw = e.target.result; // guarda o XML bruto (para salvar no banco e no Drive)
       const xml = new DOMParser().parseFromString(e.target.result, 'text/xml');
       const errs = xml.querySelector('parsererror');
       if (errs) throw new Error('XML inválido');
@@ -2093,8 +2657,18 @@ function calcCustoEfetivo(p, freteRS, icmsEntPct, ipi) {
   const icmsDesonerado   = p.icmsDesonerado ?? 0;
   const stAliquota       = p.icmsEntradaAliquotaOverride ?? p.icmsEntradaAliquota ?? 0;
   const icmsEntradaSTVal = p.vUnCom * stAliquota / 100; // ICMS-ST/Antecipação automático (Acre)
-  return p.vUnCom - desconto - icmsDesonerado + freteRS + outrasDespesas
+  // Custo Base = (Compra - Desconto - Desonerado) + Frete + Outras + (ICMS entrada + IPI) + ST
+  const custoBase = p.vUnCom - desconto - icmsDesonerado + freteRS + outrasDespesas
        + p.vUnCom * (icmsEntPct / 100 + ipi / 100) + icmsEntradaSTVal;
+  return aplicaFatorConversao(custoBase, p);
+}
+
+// Fator de conversão / fracionamento: distribui o custo da embalagem fechada
+// (ex.: 1 caixa) pela unidade de venda (ex.: dividir por 50). Aplica sobre o Custo Base.
+function aplicaFatorConversao(custoBase, p) {
+  const q = p.convQty;
+  if (!q || q <= 0) return custoBase;
+  return p.convOp === 'div' ? custoBase / q : custoBase * q;
 }
 
 function calcPreco(custoEf, aliquota, margem) {
@@ -2152,7 +2726,7 @@ function renderProducts() {
     tr.className = 'product-row transition-colors';
     tr.innerHTML = `
       <td class="px-3 py-2.5 font-medium text-slate-700 dark:text-slate-200 max-w-[160px]">
-        <div class="truncate" title="${p.descricao}">${p.descricao}</div>
+        <div class="truncate" title="${escapeHtml(p.descricao)}">${escapeHtml(p.descricao)}</div>
         ${fiscal ? `<div class="text-[9px] text-slate-400 mt-0.5">${fiscal.cat}</div>` : ''}
       </td>
       <td class="px-3 py-2.5 text-center">
@@ -2205,9 +2779,138 @@ function setProdAjuste(i, v){ produtos[i].ajuste = parseFloat(v)||null; }
 
 function recalcAll() { renderProducts(); }
 
+/* ── Contexto de precificação de um produto (CMV + alíquota do regime) ──
+   Usa os mesmos defaults/config das demais telas para nunca divergir. */
+function getPricingContext(p) {
+  const regime = empresaData.regime || 'SN';
+  const anexo  = empresaData.sn_anexo || 'I';
+  const rba    = empresaData.sn_rba || 360000;
+  const alq    = calcAliquota(regime, anexo, rba);
+  const freteGlobal = parseFloat(document.getElementById('cfg-frete')?.value)  || 0;
+  const icmsE       = parseFloat(document.getElementById('cfg-icms-entrada')?.value) || 12;
+  const freteR = p.freteRS      ?? freteGlobal;
+  const ipi    = p.ipi          ?? getIpiFromNcm(p.ncm);
+  const icms   = p.icmsEntradaPct ?? icmsE;
+  const cmv    = calcCustoEfetivo(p, freteR, icms, ipi);
+  return { cmv, alq, regime };
+}
+
+/* ── LUCRO LÍQUIDO DESEJADO (item urgente) ──
+   Converte o lucro alvo (em % sobre a venda OU em R$) para a margem
+   equivalente do motor (margemCustom), de modo que o preço sugerido
+   atualize consistentemente em TODAS as telas (tabela, card, impressão). */
+function setLucroDesejado(i, mode, raw) {
+  const p = produtos[i];
+  if (!p) return;
+  const v = parseFloat(String(raw).replace(',', '.')) || 0;
+  const { cmv, alq } = getPricingContext(p);
+  const despFrac = (despesasTotalPct || 0) / 100;
+
+  p.lucroDesejadoMode  = mode;
+  p.lucroDesejadoValor = raw;
+  p.ajuste = null; // o lucro desejado passa a comandar o preço, não o ajuste manual
+
+  if (v <= 0) { p.margemCustom = undefined; renderSidebar(); return; }
+
+  if (mode === 'pct') {
+    // lucro em % sobre a venda = a própria margem de contribuição do motor
+    p.margemCustom = v;
+  } else {
+    // lucro em R$: preço = (L + CMV) / (1 - alíquota - despesas%); margem = L/preço
+    const denom = 1 - alq - despFrac;
+    const preco = denom > 0 ? (v + cmv) / denom : (cmv + v);
+    p.margemCustom = preco > 0 ? (v / preco) * 100 : 0;
+  }
+  renderSidebar();
+}
+
+/* ── FATOR DE CONVERSÃO / FRACIONAMENTO ── */
+function setConvOp(i, op)  { produtos[i].convOp = op; renderSidebar(); }
+function setConvQty(i, v)  { produtos[i].convQty = parseFloat(String(v).replace(',', '.')) || 0; renderSidebar(); }
+
+/* ── MEMÓRIA DE CÁLCULO (botão "Log") ── */
+function openCalcLog(i) {
+  const p = produtos[i];
+  if (!p) return;
+  const { cmv, alq, regime } = getPricingContext(p);
+  const freteGlobal = parseFloat(document.getElementById('cfg-frete')?.value)  || 0;
+  const icmsE       = parseFloat(document.getElementById('cfg-icms-entrada')?.value) || 12;
+  const desconto       = p.desconto ?? 0;
+  const outras         = p.outrasDespesas ?? 0;
+  const desonerado     = p.icmsDesonerado ?? 0;
+  const freteR         = p.freteRS ?? freteGlobal;
+  const ipi            = p.ipi ?? getIpiFromNcm(p.ncm);
+  const icms           = p.icmsEntradaPct ?? icmsE;
+  const stAliq         = p.icmsEntradaAliquotaOverride ?? p.icmsEntradaAliquota ?? 0;
+  const icmsVal        = p.vUnCom * icms / 100;
+  const ipiVal         = p.vUnCom * ipi / 100;
+  const stVal          = p.vUnCom * stAliq / 100;
+  const custoBase      = p.vUnCom - desconto - desonerado + freteR + outras + icmsVal + ipiVal + stVal;
+  const temConv        = p.convQty && p.convQty > 0;
+  const margem         = p.margemCustom ?? (parseFloat(document.getElementById('cfg-margem')?.value) || 30);
+  const despPct        = despesasTotalPct || 0;
+  const preco          = p.ajuste || calcPreco(cmv, alq, margem);
+
+  const L = (n) => fmtBRL(n);
+  const linhas = [];
+  linhas.push('════════ MEMÓRIA DE CÁLCULO ════════');
+  linhas.push(`Produto: ${p.descricao}`);
+  linhas.push(`NCM: ${p.ncm}  ·  Regime: ${regime}  ·  Qtd nota: ${p.qCom}`);
+  linhas.push('');
+  linhas.push('① CUSTO BASE (por unidade da nota)');
+  linhas.push(`   Valor de Compra .............. ${L(p.vUnCom)}`);
+  linhas.push(`   (-) Desconto ................. ${L(desconto)}`);
+  linhas.push(`   (-) ICMS Desonerado (Suframa)  ${L(desonerado)}`);
+  linhas.push(`   (+) Frete de entrada ......... ${L(freteR)}`);
+  linhas.push(`   (+) Outras despesas .......... ${L(outras)}`);
+  linhas.push(`   (+) ICMS entrada (${icms.toFixed(2)}%) ...... ${L(icmsVal)}`);
+  linhas.push(`   (+) IPI (${ipi.toFixed(2)}%) ............... ${L(ipiVal)}`);
+  linhas.push(`   (+) ICMS-ST/Antecip. (${stAliq.toFixed(2)}%) . ${L(stVal)}`);
+  linhas.push(`   ──────────────────────────────`);
+  linhas.push(`   (=) Custo Base ............... ${L(custoBase)}`);
+  if (temConv) {
+    linhas.push('');
+    linhas.push('② FATOR DE CONVERSÃO / FRACIONAMENTO');
+    linhas.push(`   ${p.convOp === 'div' ? 'Dividir' : 'Multiplicar'} por ${p.convQty}`);
+    linhas.push(`   ${L(custoBase)} ${p.convOp === 'div' ? '÷' : '×'} ${p.convQty} = ${L(cmv)}`);
+    linhas.push(`   (=) CMV por unidade de venda . ${L(cmv)}`);
+  } else {
+    linhas.push(`   (=) CMV (sem fracionamento) .. ${L(cmv)}`);
+  }
+  linhas.push('');
+  linhas.push('③ PREÇO DE VENDA');
+  linhas.push(`   Fórmula: Preço = CMV ÷ (1 − alíquota − margem% − despesas%)`);
+  linhas.push(`   CMV .......................... ${L(cmv)}`);
+  linhas.push(`   Alíquota do regime ........... ${(alq*100).toFixed(2)}%`);
+  linhas.push(`   Margem (lucro sobre venda) ... ${margem.toFixed(2)}%`);
+  linhas.push(`   Despesas operacionais ........ ${despPct.toFixed(2)}%`);
+  linhas.push(`   ──────────────────────────────`);
+  linhas.push(`   (=) Preço de Venda Sugerido .. ${L(preco)}`);
+  if (p.lucroDesejadoValor) {
+    linhas.push('');
+    linhas.push(`   ⓘ Lucro líquido desejado informado: ${p.lucroDesejadoMode === 'rs' ? L(parseFloat(String(p.lucroDesejadoValor).replace(',','.'))||0) : (parseFloat(String(p.lucroDesejadoValor).replace(',','.'))||0)+'%'}`);
+  }
+
+  document.getElementById('calc-log-content').textContent = linhas.join('\n');
+  document.getElementById('modal-calc-log').classList.remove('hidden');
+  lucide.createIcons();
+}
+function closeCalcLog() { document.getElementById('modal-calc-log').classList.add('hidden'); }
+
 /* ════════════════════════════════════════════════
    HISTORY
 ════════════════════════════════════════════════ */
+// Competência (mm/aaaa) usada para organizar os XMLs em pastas no Drive.
+// Tenta ler a data de emissão da NF-e do XML; se não achar, usa a data atual.
+function getCompetencia() {
+  let d = new Date();
+  if (currentXmlRaw) {
+    const m = currentXmlRaw.match(/<dhEmi>([^<]+)<\/dhEmi>/) || currentXmlRaw.match(/<dEmi>([^<]+)<\/dEmi>/);
+    if (m) { const parsed = new Date(m[1]); if (!isNaN(parsed)) d = parsed; }
+  }
+  return String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
+}
+
 async function saveToHistory() {
   if (isDemo) { toast('Salvar desabilitado no modo demo.', 'warning'); return; }
   if (!sb || !currentUser || !produtos.length) return;
@@ -2215,13 +2918,27 @@ async function saveToHistory() {
     const regime = empresaData.regime || 'SN';
     const margem = parseFloat(document.getElementById('cfg-margem').value) || 30;
     const frete  = parseFloat(document.getElementById('cfg-frete').value)  || 0;
-    await sb.from('notas_fiscais').insert({
+    const empresaNome = empresaData.nome || 'Empresa';
+    const competencia = getCompetencia();
+
+    const { data: inserted, error } = await sb.from('notas_fiscais').insert({
       user_id: currentUser.id,
       arquivo: currentXmlName, regime, margem, frete,
-      produtos: JSON.stringify(produtos)
-    });
+      produtos: JSON.stringify(produtos),
+      xml_raw: currentXmlRaw || null,
+      empresa_nome: empresaNome,
+      competencia
+    }).select('id').single();
+    if (error) throw error;
+
     toast('Salvo no histórico!', 'success');
     loadHistory();
+
+    // Envio automático ao Google Drive (se conectado). Não bloqueia o salvamento.
+    if (driveIsConnected() && currentXmlRaw) {
+      uploadXmlToDrive(empresaNome, competencia, currentXmlName, currentXmlRaw, inserted?.id)
+        .catch(e => console.warn('Drive upload falhou:', e));
+    }
   } catch(e) { toast('Erro ao salvar: ' + e.message, 'error'); }
 }
 
@@ -2298,7 +3015,7 @@ function printReport() {
     const bg = i % 2 === 0 ? '#fff' : '#f8fafc';
     tbody.innerHTML += `
       <tr style="background:${bg};">
-        <td style="border:1px solid #e2e8f0;padding:6px 8px;max-width:200px;">${p.descricao}</td>
+        <td style="border:1px solid #e2e8f0;padding:6px 8px;max-width:200px;">${escapeHtml(p.descricao)}</td>
         <td style="border:1px solid #e2e8f0;padding:6px 8px;text-align:center;font-family:monospace;">${p.ncm}</td>
         <td style="border:1px solid #e2e8f0;padding:6px 8px;text-align:right;">${fmtBRL(p.vUnCom)}</td>
         <td style="border:1px solid #e2e8f0;padding:6px 8px;text-align:right;">${fmtBRL(custoEf)}</td>
@@ -2347,6 +3064,10 @@ function toggleTheme() {
 ════════════════════════════════════════════════ */
 function fmtBRL(n) {
   return (n||0).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+}
+// Escapa HTML para evitar XSS ao injetar dados vindos do XML (fornecedor) ou de cadastro em innerHTML.
+function escapeHtml(v) {
+  return String(v ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 }
 function fmtNum(n) {
   return (n||0).toLocaleString('pt-BR');
@@ -2409,6 +3130,7 @@ function setCfgTab(name) {
   const btn = document.getElementById('ctab-' + name);
   btn.className = 'cfg-tab-btn active-cfg-tab px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1';
   if (name === 'calculo') renderCalculoTab();
+  if (name === 'drive') updateDriveUI();
   lucide.createIcons();
 }
 
@@ -2513,7 +3235,14 @@ function calcDespesas() {
   if (el('desp-res-total'))   el('desp-res-total').textContent   = pctTotal.toFixed(2) + '%';
 }
 
-function saveDespesas() {
+// Chave de localStorage específica por usuário, para não misturar despesas
+// entre contas diferentes que usem o mesmo navegador.
+function despesasStorageKey() {
+  return 'gf_despesas_' + (currentUser?.id || 'anon');
+}
+
+// Coleta os valores atuais dos campos de despesas num objeto.
+function collectDespesas() {
   const data = {};
   DESP_FIELDS_FIXAS.forEach(f => { data[f] = parseFloat(document.getElementById('desp-' + f)?.value) || 0; });
   data.tcredito = parseFloat(document.getElementById('desp-tcredito').value) || 2.5;
@@ -2523,25 +3252,59 @@ function saveDespesas() {
   data.fat      = parseFloat(document.getElementById('desp-fat').value)      || 0;
   data.de       = document.getElementById('desp-de').value;
   data.ate      = document.getElementById('desp-ate').value;
-  localStorage.setItem('gf_despesas', JSON.stringify(data));
-  calcDespesas();
-  toast('Despesas salvas! Incluídas no cálculo de preços.', 'success');
+  return data;
 }
 
-function loadDespesas() {
-  try {
-    const saved = JSON.parse(localStorage.getItem('gf_despesas') || '{}');
-    const set = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.value = val; };
-    DESP_FIELDS_FIXAS.forEach(f => { if (saved[f] != null) set('desp-' + f, saved[f]); });
-    if (saved.tcredito != null) set('desp-tcredito', saved.tcredito);
-    if (saved.tdebito != null)  set('desp-tdebito', saved.tdebito);
-    if (saved.tpix != null)     set('desp-tpix', saved.tpix);
-    if (saved.tmkt != null)     set('desp-tmkt', saved.tmkt);
-    if (saved.fat != null)      set('desp-fat', saved.fat);
-    if (saved.de)               set('desp-de', saved.de);
-    if (saved.ate)              set('desp-ate', saved.ate);
-    calcDespesas();
-  } catch(e) {}
+// Preenche os campos a partir de um objeto de despesas.
+function applyDespesas(saved) {
+  if (!saved) return;
+  const set = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.value = val; };
+  DESP_FIELDS_FIXAS.forEach(f => { if (saved[f] != null) set('desp-' + f, saved[f]); });
+  if (saved.tcredito != null) set('desp-tcredito', saved.tcredito);
+  if (saved.tdebito != null)  set('desp-tdebito', saved.tdebito);
+  if (saved.tpix != null)     set('desp-tpix', saved.tpix);
+  if (saved.tmkt != null)     set('desp-tmkt', saved.tmkt);
+  if (saved.fat != null)      set('desp-fat', saved.fat);
+  if (saved.de)               set('desp-de', saved.de);
+  if (saved.ate)              set('desp-ate', saved.ate);
+}
+
+async function saveDespesas() {
+  const data = collectDespesas();
+  // 1. Cache imediato no navegador (funciona offline e no modo demo)
+  localStorage.setItem(despesasStorageKey(), JSON.stringify(data));
+  calcDespesas();
+
+  // 2. Persiste no Supabase (fonte da verdade entre dispositivos)
+  if (!isDemo && sb && currentUser) {
+    try {
+      const { error } = await sb.from('despesas')
+        .upsert({ user_id: currentUser.id, data, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+      if (error) throw error;
+      toast('Despesas salvas na nuvem! Incluídas no cálculo de preços.', 'success');
+    } catch(e) {
+      toast('Despesas salvas no navegador (falha ao sincronizar na nuvem).', 'warning');
+    }
+  } else {
+    toast('Despesas salvas! Incluídas no cálculo de preços.', 'success');
+  }
+}
+
+async function loadDespesas() {
+  // 1. Carrega primeiro do cache local (rápido / offline)
+  try { applyDespesas(JSON.parse(localStorage.getItem(despesasStorageKey()) || '{}')); } catch(e) {}
+
+  // 2. Se logado, busca a versão da nuvem e sobrescreve (fonte da verdade)
+  if (!isDemo && sb && currentUser) {
+    try {
+      const { data: row } = await sb.from('despesas').select('data').eq('user_id', currentUser.id).maybeSingle();
+      if (row?.data) {
+        applyDespesas(row.data);
+        localStorage.setItem(despesasStorageKey(), JSON.stringify(row.data));
+      }
+    } catch(e) {}
+  }
+  calcDespesas();
 }
 
 /* ════════════════════════════════════════════════
@@ -2767,7 +3530,7 @@ function renderSidebar() {
     div.className = 'prod-sidebar-item' + (i === selectedProductIdx ? ' selected' : '');
     div.onclick = () => { selectedProductIdx = i; renderSidebar(); };
     div.innerHTML = `
-      <div class="text-xs font-bold text-slate-700 dark:text-slate-200 truncate" title="${p.descricao}">${p.descricao}</div>
+      <div class="text-xs font-bold text-slate-700 dark:text-slate-200 truncate" title="${escapeHtml(p.descricao)}">${escapeHtml(p.descricao)}</div>
       <div class="flex items-center justify-between mt-1">
         <span class="text-[10px] text-slate-400 font-mono">${p.ncm}</span>
         <span class="text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400">${fmtBRL(preco)}</span>
@@ -2776,6 +3539,91 @@ function renderSidebar() {
   });
   lucide.createIcons();
   renderSidebarDetail(alq, margem, freteGlobal, icmsE);
+}
+
+/* ════════════════════════════════════════════════
+   TABELA ESTILO-ERP (visão "bate o olho" — igual à planilha do ERP)
+   Recebe os valores já calculados e monta uma tabela vertical com
+   colunas Descrição | R$ | %, agrupada em Preço de Compra / CST Entrada /
+   Preço de Venda / CST Saída, terminando no Lucro Líquido.
+════════════════════════════════════════════════ */
+function buildErpTable(v) {
+  const brl = (n) => fmtBRL(n);
+  const pct = (n) => (n || 0).toFixed(2) + '%';
+  // linha comum: sinal, label, valor R$, valor %
+  const r = (sign, label, valor, perc, opt = {}) => {
+    const sc = sign === '-' ? 'text-red-500' : sign === '+' ? 'text-blue-500' : 'text-slate-400';
+    const valColor = opt.strong ? 'font-extrabold text-slate-800 dark:text-white' : 'font-semibold text-slate-700 dark:text-slate-200';
+    return `<tr class="${opt.bg || ''}">
+      <td class="px-3 py-1.5 text-[11px] text-slate-600 dark:text-slate-300">${sign ? `<span class="${sc} font-bold mr-1">(${sign})</span>` : ''}${label}</td>
+      <td class="px-3 py-1.5 text-[11px] text-right ${valColor} whitespace-nowrap">${valor != null ? brl(valor) : ''}</td>
+      <td class="px-3 py-1.5 text-[10px] text-right text-slate-400 whitespace-nowrap">${perc != null ? pct(perc) : ''}</td>
+    </tr>`;
+  };
+  const sec = (label, color) => `<tr><td colspan="3" class="px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider ${color}">${label}</td></tr>`;
+  const totalRow = (label, valor, perc, color) => `<tr class="border-t-2 border-slate-300 dark:border-slate-600">
+      <td class="px-3 py-2 text-[11px] font-extrabold text-slate-700 dark:text-slate-200"><span class="text-slate-400 mr-1">(=)</span>${label}</td>
+      <td class="px-3 py-2 text-xs text-right font-extrabold ${color || 'text-slate-800 dark:text-white'} whitespace-nowrap">${brl(valor)}</td>
+      <td class="px-3 py-2 text-[10px] text-right font-bold ${color || 'text-slate-400'} whitespace-nowrap">${perc != null ? pct(perc) : ''}</td>
+    </tr>`;
+
+  const pctOf = (val, base) => base > 0 ? (val / base) * 100 : 0;
+
+  let rows = '';
+  // ── Preço de compra / entrada ──
+  rows += sec('Cálculo de Preço', 'bg-slate-100 dark:bg-slate-800/60 text-slate-500');
+  rows += r('', 'Preço de Compra', v.precoCompra, null);
+  rows += r('-', 'Descontos', v.desconto, pctOf(v.desconto, v.precoCompra));
+  rows += r('+', 'Outras Despesas', v.outrasDespesas, pctOf(v.outrasDespesas, v.precoCompra));
+  rows += r('+', 'Frete', v.freteVal, pctOf(v.freteVal, v.precoCompra));
+  if (v.icmsDesonerado > 0) rows += r('-', 'ICMS Desonerado (Suframa)', v.icmsDesonerado, pctOf(v.icmsDesonerado, v.precoCompra));
+  rows += totalRow('Preço Líquido', v.precoLiquido, null, 'text-slate-800 dark:text-white');
+
+  // ── CST Entrada ──
+  rows += sec('CST Entrada', 'bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400');
+  rows += r('+', 'IPI', v.ipiVal, v.ipi);
+  rows += r('+', 'ICMS-ST / Antecipação', v.icmsEntradaVal, v.icmsEntradaAliquota);
+  rows += r('+', 'ICMS Entrada (fornecedor)', v.icmsVal, v.icmsRegular);
+  if (v.temConv) rows += r('', `Fracionamento (${v.convOp === 'div' ? '÷' : '×'} ${v.convQty})`, null, null);
+  rows += totalRow('CMV / Custo', v.cmv, null, 'text-blue-700 dark:text-blue-300');
+  rows += r('', 'Markup (CMV)', null, v.markup);
+
+  // ── Preço de venda ──
+  rows += sec('Preço de Venda', 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400');
+  rows += r('', 'Preço de Venda Sugerido', v.precoVenda, null, { strong: true });
+  if (v.descontoVenda > 0) rows += r('-', 'Desconto na venda', v.descontoVenda, pctOf(v.descontoVenda, v.precoVenda));
+  rows += r('', 'Preço à Vista', v.precoVista, null);
+
+  // ── CST Saída ──
+  rows += sec('CST Saída', 'bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400');
+  rows += r('-', 'CMV', v.cmv, pctOf(v.cmv, v.precoVenda));
+  if (v.irpjCsll > 0)     rows += r('+', v.regime === 'SN' ? 'Simples Nacional' : 'IRPJ / CSLL', v.irpjCsll, pctOf(v.irpjCsll, v.precoVenda));
+  if (v.icmsDebito > 0)   rows += r('+', 'Débito de ICMS', v.icmsDebito, pctOf(v.icmsDebito, v.precoVenda));
+  if (v.pisDebito > 0)    rows += r('+', 'Débito de PIS', v.pisDebito, pctOf(v.pisDebito, v.precoVenda));
+  if (v.cofinsDebito > 0) rows += r('+', 'Débito de COFINS', v.cofinsDebito, pctOf(v.cofinsDebito, v.precoVenda));
+  if (v.comissaoVal > 0)  rows += r('+', 'Comissão', v.comissaoVal, pctOf(v.comissaoVal, v.precoVenda));
+  if (v.totalDespOper > 0)rows += r('-', 'Custo Operacional (Desp. Fixas)', v.totalDespOper, v.despPct);
+  rows += totalRow('Lucro Líquido', v.lucroLiquido, v.mcPct, v.mcPct >= 20 ? 'text-emerald-600 dark:text-emerald-400' : v.mcPct >= 10 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400');
+
+  return `
+    <div class="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+      <div class="bg-slate-800 dark:bg-slate-900 px-4 py-2 flex items-center gap-2">
+        <i data-lucide="table" class="w-3.5 h-3.5 text-emerald-400"></i>
+        <span class="text-[11px] font-extrabold text-white uppercase tracking-wider">Cálculo de Preço — Resumo</span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full border-collapse">
+          <thead>
+            <tr class="bg-slate-50 dark:bg-slate-800/40 text-[9px] uppercase tracking-wider text-slate-400">
+              <th class="px-3 py-1.5 text-left font-bold">Descrição</th>
+              <th class="px-3 py-1.5 text-right font-bold">Valor (R$)</th>
+              <th class="px-3 py-1.5 text-right font-bold">%</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 dark:divide-slate-800/60">${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
 }
 
 function renderSidebarDetail(alq, defaultMargem, defaultFrete, icmsE) {
@@ -2808,6 +3656,22 @@ function renderSidebarDetail(alq, defaultMargem, defaultFrete, icmsE) {
   // ── CMV: usa a MESMA função das demais telas (tabela/impressão/lista), para nunca divergir.
   const cmv = calcCustoEfetivo(p, freteVal, icmsRegular, ipi);
   const custoContabil = cmv;
+
+  // ── Fator de conversão / fracionamento ──
+  const convOp  = p.convOp || 'div';
+  const convQty = p.convQty || 0;
+  const temConv = convQty > 0;
+  // Valores em R$ dos componentes de entrada (para a tabela estilo-ERP e o rastro)
+  const ipiVal  = precoCompra * ipi / 100;
+  const icmsVal = precoCompra * icmsRegular / 100;
+  const precoLiquido = precoCompra - desconto + outrasDespesas + freteVal;
+  // Custo Base antes de aplicar o fator (para exibir o rastro na tela)
+  const custoBaseSemConv = precoCompra - desconto - icmsDesonerado + freteVal + outrasDespesas
+    + precoCompra * (icmsRegular / 100 + ipi / 100) + icmsEntradaVal;
+
+  // ── Lucro líquido desejado (valores digitados pelo usuário) ──
+  const ldMode = p.lucroDesejadoMode || 'pct';
+  const ldVal  = p.lucroDesejadoValor ?? '';
 
   // ── PREÇO DE VENDA ────────────────────────────────
   const precoVenda     = p.ajuste || calcPreco(cmv, alq, m);
@@ -2871,7 +3735,7 @@ function renderSidebarDetail(alq, defaultMargem, defaultFrete, icmsE) {
     <!-- HEADER -->
     <div class="flex items-start justify-between gap-2">
       <div>
-        <h3 class="text-sm font-extrabold text-slate-800 dark:text-white leading-tight">${p.descricao}</h3>
+        <h3 class="text-sm font-extrabold text-slate-800 dark:text-white leading-tight">${escapeHtml(p.descricao)}</h3>
         <div class="flex flex-wrap gap-1.5 mt-1 text-[10px] text-slate-400 items-center">
           <span class="font-mono">NCM ${p.ncm}</span>
           <span>Qtd: <strong>${p.qCom}</strong></span>
@@ -2897,6 +3761,16 @@ function renderSidebarDetail(alq, defaultMargem, defaultFrete, icmsE) {
         </button>
       </div>
     </div>
+
+    <!-- ⓪ RESUMO ESTILO-ERP (bate o olho) -->
+    ${buildErpTable({
+      precoCompra, desconto, outrasDespesas, freteVal, icmsDesonerado, precoLiquido,
+      ipiVal, ipi, icmsEntradaVal, icmsEntradaAliquota, icmsVal, icmsRegular,
+      temConv, convOp, convQty, cmv, markup,
+      precoVenda, descontoVenda, precoVista,
+      regime, irpjCsll, icmsDebito, pisDebito, cofinsDebito, comissaoVal,
+      totalDespOper, despPct, lucroLiquido, mcPct
+    })}
 
     <!-- ① CUSTO DE ENTRADA -->
     <div class="bg-white dark:bg-[#0f172a] border border-blue-200 dark:border-blue-900/40 rounded-xl overflow-hidden">
@@ -2925,6 +3799,23 @@ function renderSidebarDetail(alq, defaultMargem, defaultFrete, icmsE) {
             <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">(+) Outras Despesas (R$)${p.outrasDespesas>0?'<span class="ml-1 text-blue-400 normal-case font-normal">do XML</span>':''}</div>
             ${sInp('outrasDespesas', outrasDespesas||'', 9999, '0.01')}
           </div>
+        </div>
+
+        <!-- FATOR DE CONVERSÃO / FRACIONAMENTO -->
+        <div class="bg-slate-50 dark:bg-slate-900 rounded-lg p-2.5 border border-slate-200 dark:border-slate-700 mb-2">
+          <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1"><i data-lucide="divide" class="w-3 h-3 text-blue-500"></i> Fator de Conversão / Fracionamento</div>
+          <div class="flex gap-2 items-center">
+            <select onchange="setConvOp(${idx}, this.value)" class="px-2 py-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-blue-500">
+              <option value="div" ${convOp==='div'?'selected':''}>Dividir ÷</option>
+              <option value="mul" ${convOp==='mul'?'selected':''}>Multiplicar ×</option>
+            </select>
+            <input type="number" value="${convQty||''}" placeholder="ex: 50" min="0" step="1" onchange="setConvQty(${idx}, this.value)"
+              class="flex-1 w-full px-2 py-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-blue-500">
+            <span class="text-[10px] text-slate-400 whitespace-nowrap">un. venda</span>
+          </div>
+          ${temConv
+            ? `<div class="text-[10px] text-slate-500 dark:text-slate-400 mt-1.5">Custo Base ${fmtBRL(custoBaseSemConv)} ${convOp==='div'?'÷':'×'} ${convQty} = <strong class="text-blue-600 dark:text-blue-400">${fmtBRL(cmv)}</strong> / un. de venda</div>`
+            : `<div class="text-[10px] text-slate-400 mt-1.5 italic">Sem fracionamento — 1 unidade da nota = 1 unidade de venda.</div>`}
         </div>
         ${row('Preço de Compra', precoCompra, '')}
         ${desconto > 0 ? row('Desconto', desconto, 'text-red-400', '-') : ''}
@@ -3032,6 +3923,28 @@ function renderSidebarDetail(alq, defaultMargem, defaultFrete, icmsE) {
           </div>
         </div>
 
+        <!-- ⚡ LUCRO LÍQUIDO DESEJADO -->
+        <div class="bg-emerald-50 dark:bg-emerald-950/20 rounded-lg p-3 border-2 border-emerald-300 dark:border-emerald-800 mt-2">
+          <div class="text-[10px] font-extrabold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider mb-2 flex items-center gap-1">
+            <i data-lucide="target" class="w-3.5 h-3.5"></i> Lucro Líquido Desejado
+          </div>
+          <div class="flex gap-2 items-stretch">
+            <select id="ld-mode-${idx}" onchange="setLucroDesejado(${idx}, this.value, document.getElementById('ld-val-${idx}').value)"
+              class="px-2 py-1.5 text-xs bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 rounded-lg outline-none focus:ring-1 focus:ring-emerald-500">
+              <option value="pct" ${ldMode==='pct'?'selected':''}>% sobre venda</option>
+              <option value="rs"  ${ldMode==='rs'?'selected':''}>R$ por unidade</option>
+            </select>
+            <input type="number" id="ld-val-${idx}" value="${ldVal}" placeholder="${ldMode==='pct'?'ex: 15':'ex: 50,00'}" step="0.01" min="0"
+              onchange="setLucroDesejado(${idx}, document.getElementById('ld-mode-${idx}').value, this.value)"
+              class="flex-1 w-full px-2 py-1.5 text-sm bg-white dark:bg-slate-900 border-2 border-emerald-300 dark:border-emerald-700 rounded-lg outline-none focus:ring-1 focus:ring-emerald-500 font-extrabold text-emerald-700 dark:text-emerald-300">
+          </div>
+          <div class="mt-2 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400">
+            <span>Preço resultante: <strong class="text-emerald-600 dark:text-emerald-400 text-xs">${fmtBRL(precoVenda)}</strong></span>
+            <span>Lucro líq.: <strong class="text-emerald-600 dark:text-emerald-400 text-xs">${fmtBRL(lucroLiquido)}</strong> (${mcPct.toFixed(1)}%)</span>
+          </div>
+          <p class="text-[9px] text-slate-400 mt-1">Digite quanto quer ganhar (em % da venda ou R$ por unidade) e o preço sugerido é recalculado na hora.</p>
+        </div>
+
         <!-- CST SAÍDA -->
         <div class="bg-red-50 dark:bg-red-950/10 rounded-lg p-3 border border-red-100 dark:border-red-900/30 mt-2">
           <div class="text-[10px] font-extrabold text-red-600 dark:text-red-400 uppercase tracking-wider mb-2">CST Saída — Impostos sobre a Venda</div>
@@ -3112,6 +4025,11 @@ function renderSidebarDetail(alq, defaultMargem, defaultFrete, icmsE) {
         <span class="font-bold">${markup.toFixed(1)}% &nbsp;=&nbsp; ${fmtBRL(precoVenda - cmv)} a mais que o custo</span>
       </div>
     </div>
+
+    <!-- BOTÃO LOG (memória de cálculo) -->
+    <button onclick="openCalcLog(${idx})" class="w-full py-2.5 rounded-xl bg-slate-800 dark:bg-slate-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-slate-700 dark:hover:bg-slate-600 transition-all">
+      <i data-lucide="file-text" class="w-3.5 h-3.5"></i> Log — ver memória de cálculo
+    </button>
 
   </div>`;
   lucide.createIcons();
