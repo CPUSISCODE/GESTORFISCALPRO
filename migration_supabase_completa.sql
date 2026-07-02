@@ -143,6 +143,31 @@ CREATE POLICY "own_notas" ON notas_fiscais
   FOR ALL USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
+-- Colunas extras para guardar o XML bruto e organizar o backup no Google Drive
+ALTER TABLE notas_fiscais ADD COLUMN IF NOT EXISTS xml_raw       TEXT;
+ALTER TABLE notas_fiscais ADD COLUMN IF NOT EXISTS empresa_nome  TEXT;
+ALTER TABLE notas_fiscais ADD COLUMN IF NOT EXISTS competencia   TEXT;  -- mm/aaaa
+ALTER TABLE notas_fiscais ADD COLUMN IF NOT EXISTS drive_file_id TEXT;
+
+-- ────────────────────────────────────────────
+-- TABELA: despesas
+-- Persiste as despesas operacionais de cada usuário no Supabase
+-- (além do cache em localStorage do navegador). Uma linha por usuário.
+-- ────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS despesas (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    UUID NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
+  data       JSONB NOT NULL DEFAULT '{}'::jsonb,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE despesas ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "own_despesas" ON despesas;
+CREATE POLICY "own_despesas" ON despesas
+  FOR ALL USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
 -- ════════════════════════════════════════════════════════════════
 -- FIM DA MIGRAÇÃO. Próximos passos manuais (fora do SQL):
 -- 1. Authentication → URL Configuration → Site URL = URL do GitHub Pages do app

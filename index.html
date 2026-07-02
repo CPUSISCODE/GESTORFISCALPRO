@@ -1040,14 +1040,39 @@ input[type=range] { accent-color:#10b981; }
       </div>
 
       <!-- ─── DRIVE ─── -->
-      <div id="cfg-panel-drive" class="cfg-panel hidden">
+      <div id="cfg-panel-drive" class="cfg-panel hidden space-y-4">
         <div class="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-3">
-          <h3 class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Google Drive</h3>
+          <h3 class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Google Drive — link da pasta</h3>
           <p class="text-xs text-slate-400">Cole o link da pasta do Google Drive com seus XMLs de NF-e.</p>
           <div class="flex gap-2">
             <input type="url" id="cfg-drive" placeholder="https://drive.google.com/drive/folders/..." class="flex-1 px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500">
             <button onclick="openDrive()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl flex items-center gap-1">
               <i data-lucide="external-link" class="w-3.5 h-3.5"></i> Abrir
+            </button>
+          </div>
+        </div>
+
+        <!-- Backup automático de XMLs -->
+        <div class="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-3">
+          <div class="flex items-center justify-between gap-2">
+            <h3 class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+              <i data-lucide="cloud-upload" class="w-3.5 h-3.5 text-emerald-500"></i> Backup automático de XMLs
+            </h3>
+            <span id="drive-status-badge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">Desconectado</span>
+          </div>
+          <p class="text-xs text-slate-400">
+            Ao conectar, cada XML salvo no histórico é enviado automaticamente para o seu Drive,
+            organizado em <span class="font-mono text-slate-500 dark:text-slate-300">Empresa / mês-ano / arquivo.xml</span>.
+          </p>
+          <div id="drive-not-configured" class="hidden text-[11px] text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 rounded-lg p-3">
+            ⚠️ O administrador ainda não configurou o <span class="font-mono">GOOGLE_CLIENT_ID</span> (OAuth). O envio automático fica indisponível até isso ser preenchido no código.
+          </div>
+          <div class="flex gap-2">
+            <button onclick="connectDrive()" id="btn-drive-connect" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all">
+              <i data-lucide="link" class="w-3.5 h-3.5"></i> Conectar Google Drive
+            </button>
+            <button onclick="disconnectDrive()" id="btn-drive-disconnect" class="hidden px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-red-100 dark:hover:bg-red-950/50 text-slate-600 dark:text-slate-300 hover:text-red-500 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all">
+              <i data-lucide="unlink" class="w-3.5 h-3.5"></i> Desconectar
             </button>
           </div>
         </div>
@@ -1358,6 +1383,21 @@ const LR = { pis:.0165, cofins:.076, icms:.17 };
 ════════════════════════════════════════════════ */
 const MP_PRECO_MENSAL = 100; // R$ 100,00/mês — mesmo valor para todos os regimes
 
+/* ════════════════════════════════════════════════
+   GOOGLE DRIVE — backup automático de XMLs
+   Para ativar, crie um OAuth Client ID ("Aplicativo Web") no
+   Google Cloud Console (APIs & Services → Credentials), habilite a
+   "Google Drive API", adicione a URL do app em "Authorized JavaScript
+   origins", e cole o Client ID abaixo. Adicione seu e-mail como
+   "test user" na tela de consentimento enquanto o app não for verificado.
+════════════════════════════════════════════════ */
+const GOOGLE_CLIENT_ID = ''; // ← COLE AQUI o Client ID (ex: '1234-abc.apps.googleusercontent.com')
+// Pasta raiz no Drive onde a estrutura Empresa/mês-ano será criada.
+// ID extraído do link da pasta compartilhada informada pelo cliente.
+const DRIVE_PARENT_FOLDER_ID = '15KRDJASUHSm5ZPUeHuefxIqQQXtau1N5';
+// Escopo amplo é necessário para gravar dentro de uma pasta pré-existente (a compartilhada).
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive';
+
 // WhatsApp de suporte (altere o número abaixo)
 const WHATSAPP_NUMERO = '5519989765398';
 
@@ -1409,6 +1449,7 @@ let empresaData = {};
 let isDemo = false;
 let produtos = [];
 let currentXmlName = '';
+let currentXmlRaw = '';
 let statusPollTimer = null;
 let isAdmin = false;
 let passwordRecoveryMode = false;
@@ -2102,6 +2143,160 @@ function openDrive() {
 }
 
 /* ════════════════════════════════════════════════
+   GOOGLE DRIVE — OAuth (GIS) + upload de XMLs
+════════════════════════════════════════════════ */
+let driveTokenClient = null;
+let driveAccessToken = null;
+let driveTokenExpiry = 0;
+let gisLoaded = false;
+
+// Carrega o script do Google Identity Services sob demanda.
+function loadGis() {
+  return new Promise((resolve, reject) => {
+    if (gisLoaded && window.google?.accounts?.oauth2) return resolve();
+    const s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.async = true; s.defer = true;
+    s.onload = () => { gisLoaded = true; resolve(); };
+    s.onerror = () => reject(new Error('Falha ao carregar o Google Identity Services.'));
+    document.head.appendChild(s);
+  });
+}
+
+function driveIsConnected() {
+  return !!driveAccessToken && Date.now() < driveTokenExpiry;
+}
+
+function updateDriveUI() {
+  const configured = !!GOOGLE_CLIENT_ID;
+  const badge   = document.getElementById('drive-status-badge');
+  const btnC    = document.getElementById('btn-drive-connect');
+  const btnD    = document.getElementById('btn-drive-disconnect');
+  const warn    = document.getElementById('drive-not-configured');
+  if (warn) warn.classList.toggle('hidden', configured);
+  if (btnC)  btnC.classList.toggle('hidden', !configured || driveIsConnected());
+  if (btnD)  btnD.classList.toggle('hidden', !driveIsConnected());
+  if (badge) {
+    const on = driveIsConnected();
+    badge.textContent = on ? 'Conectado' : 'Desconectado';
+    badge.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full ' +
+      (on ? 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400'
+          : 'bg-slate-100 dark:bg-slate-800 text-slate-500');
+  }
+}
+
+// Solicita um access token. silent=true tenta renovar sem popup.
+function requestDriveToken(silent) {
+  return new Promise(async (resolve, reject) => {
+    try {
+      await loadGis();
+      if (!driveTokenClient) {
+        driveTokenClient = google.accounts.oauth2.initTokenClient({
+          client_id: GOOGLE_CLIENT_ID,
+          scope: DRIVE_SCOPE,
+          callback: (resp) => {
+            if (resp.error) { reject(new Error(resp.error)); return; }
+            driveAccessToken = resp.access_token;
+            driveTokenExpiry = Date.now() + (Number(resp.expires_in || 3600) - 60) * 1000;
+            updateDriveUI();
+            resolve(driveAccessToken);
+          },
+        });
+      } else {
+        driveTokenClient.callback = (resp) => {
+          if (resp.error) { reject(new Error(resp.error)); return; }
+          driveAccessToken = resp.access_token;
+          driveTokenExpiry = Date.now() + (Number(resp.expires_in || 3600) - 60) * 1000;
+          updateDriveUI();
+          resolve(driveAccessToken);
+        };
+      }
+      driveTokenClient.requestAccessToken({ prompt: silent ? '' : 'consent' });
+    } catch(e) { reject(e); }
+  });
+}
+
+async function connectDrive() {
+  if (!GOOGLE_CLIENT_ID) { toast('Google Drive não configurado (falta o Client ID).', 'warning'); return; }
+  try {
+    await requestDriveToken(false);
+    toast('Google Drive conectado! Novos XMLs salvos serão enviados automaticamente.', 'success');
+  } catch(e) {
+    toast('Não foi possível conectar ao Drive: ' + (e.message || e), 'error');
+  }
+}
+
+function disconnectDrive() {
+  if (driveAccessToken && window.google?.accounts?.oauth2) {
+    try { google.accounts.oauth2.revoke(driveAccessToken, () => {}); } catch(e) {}
+  }
+  driveAccessToken = null; driveTokenExpiry = 0;
+  updateDriveUI();
+  toast('Google Drive desconectado.', 'info');
+}
+
+// Garante um token válido (renova em silêncio se expirou).
+async function ensureDriveToken() {
+  if (driveIsConnected()) return driveAccessToken;
+  return await requestDriveToken(true);
+}
+
+// Procura uma subpasta pelo nome dentro de parentId; cria se não existir. Retorna o ID.
+async function driveFindOrCreateFolder(name, parentId, token) {
+  const safeName = name.replace(/'/g, "\\'");
+  const q = encodeURIComponent(
+    `mimeType='application/vnd.google-apps.folder' and name='${safeName}' and '${parentId}' in parents and trashed=false`
+  );
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)&supportsAllDrives=true&includeItemsFromAllDrives=true`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (data.files && data.files.length) return data.files[0].id;
+
+  const createRes = await fetch('https://www.googleapis.com/drive/v3/files?supportsAllDrives=true', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder', parents: [parentId] }),
+  });
+  const created = await createRes.json();
+  if (!created.id) throw new Error(created.error?.message || 'Falha ao criar pasta no Drive.');
+  return created.id;
+}
+
+// Faz upload do XML na estrutura Empresa/competência/arquivo.xml.
+async function uploadXmlToDrive(empresaNome, competencia, filename, xmlContent, notaId) {
+  const token = await ensureDriveToken();
+  // competencia vem como "mm/aaaa" — vira "mm-aaaa" para nome de pasta
+  const compFolder = String(competencia).replace(/\//g, '-');
+  const empresaFolderId = await driveFindOrCreateFolder(empresaNome || 'Empresa', DRIVE_PARENT_FOLDER_ID, token);
+  const compFolderId    = await driveFindOrCreateFolder(compFolder, empresaFolderId, token);
+
+  const metadata = { name: filename || 'nota.xml', parents: [compFolderId] };
+  const boundary = 'gf' + Date.now();
+  const body =
+    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n` +
+    JSON.stringify(metadata) +
+    `\r\n--${boundary}\r\nContent-Type: application/xml\r\n\r\n` +
+    xmlContent +
+    `\r\n--${boundary}--`;
+
+  const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': `multipart/related; boundary=${boundary}` },
+    body,
+  });
+  const uploaded = await res.json();
+  if (!uploaded.id) throw new Error(uploaded.error?.message || 'Falha no upload do XML.');
+
+  // Registra o ID do arquivo do Drive no histórico
+  if (notaId && sb) {
+    try { await sb.from('notas_fiscais').update({ drive_file_id: uploaded.id }).eq('id', notaId); } catch(e) {}
+  }
+  toast(`XML enviado ao Drive: ${empresaNome}/${compFolder}/`, 'success');
+  return uploaded.id;
+}
+
+/* ════════════════════════════════════════════════
    XML PROCESSING
 ════════════════════════════════════════════════ */
 function handleXmlFile(e) { if (e.target.files[0]) processXmlFile(e.target.files[0]); }
@@ -2113,6 +2308,7 @@ function processXmlFile(file) {
   const reader = new FileReader();
   reader.onload = e => {
     try {
+      currentXmlRaw = e.target.result; // guarda o XML bruto (para salvar no banco e no Drive)
       const xml = new DOMParser().parseFromString(e.target.result, 'text/xml');
       const errs = xml.querySelector('parsererror');
       if (errs) throw new Error('XML inválido');
@@ -2367,6 +2563,17 @@ function recalcAll() { renderProducts(); }
 /* ════════════════════════════════════════════════
    HISTORY
 ════════════════════════════════════════════════ */
+// Competência (mm/aaaa) usada para organizar os XMLs em pastas no Drive.
+// Tenta ler a data de emissão da NF-e do XML; se não achar, usa a data atual.
+function getCompetencia() {
+  let d = new Date();
+  if (currentXmlRaw) {
+    const m = currentXmlRaw.match(/<dhEmi>([^<]+)<\/dhEmi>/) || currentXmlRaw.match(/<dEmi>([^<]+)<\/dEmi>/);
+    if (m) { const parsed = new Date(m[1]); if (!isNaN(parsed)) d = parsed; }
+  }
+  return String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
+}
+
 async function saveToHistory() {
   if (isDemo) { toast('Salvar desabilitado no modo demo.', 'warning'); return; }
   if (!sb || !currentUser || !produtos.length) return;
@@ -2374,13 +2581,27 @@ async function saveToHistory() {
     const regime = empresaData.regime || 'SN';
     const margem = parseFloat(document.getElementById('cfg-margem').value) || 30;
     const frete  = parseFloat(document.getElementById('cfg-frete').value)  || 0;
-    await sb.from('notas_fiscais').insert({
+    const empresaNome = empresaData.nome || 'Empresa';
+    const competencia = getCompetencia();
+
+    const { data: inserted, error } = await sb.from('notas_fiscais').insert({
       user_id: currentUser.id,
       arquivo: currentXmlName, regime, margem, frete,
-      produtos: JSON.stringify(produtos)
-    });
+      produtos: JSON.stringify(produtos),
+      xml_raw: currentXmlRaw || null,
+      empresa_nome: empresaNome,
+      competencia
+    }).select('id').single();
+    if (error) throw error;
+
     toast('Salvo no histórico!', 'success');
     loadHistory();
+
+    // Envio automático ao Google Drive (se conectado). Não bloqueia o salvamento.
+    if (driveIsConnected() && currentXmlRaw) {
+      uploadXmlToDrive(empresaNome, competencia, currentXmlName, currentXmlRaw, inserted?.id)
+        .catch(e => console.warn('Drive upload falhou:', e));
+    }
   } catch(e) { toast('Erro ao salvar: ' + e.message, 'error'); }
 }
 
@@ -2572,6 +2793,7 @@ function setCfgTab(name) {
   const btn = document.getElementById('ctab-' + name);
   btn.className = 'cfg-tab-btn active-cfg-tab px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1';
   if (name === 'calculo') renderCalculoTab();
+  if (name === 'drive') updateDriveUI();
   lucide.createIcons();
 }
 
@@ -2676,7 +2898,14 @@ function calcDespesas() {
   if (el('desp-res-total'))   el('desp-res-total').textContent   = pctTotal.toFixed(2) + '%';
 }
 
-function saveDespesas() {
+// Chave de localStorage específica por usuário, para não misturar despesas
+// entre contas diferentes que usem o mesmo navegador.
+function despesasStorageKey() {
+  return 'gf_despesas_' + (currentUser?.id || 'anon');
+}
+
+// Coleta os valores atuais dos campos de despesas num objeto.
+function collectDespesas() {
   const data = {};
   DESP_FIELDS_FIXAS.forEach(f => { data[f] = parseFloat(document.getElementById('desp-' + f)?.value) || 0; });
   data.tcredito = parseFloat(document.getElementById('desp-tcredito').value) || 2.5;
@@ -2686,25 +2915,59 @@ function saveDespesas() {
   data.fat      = parseFloat(document.getElementById('desp-fat').value)      || 0;
   data.de       = document.getElementById('desp-de').value;
   data.ate      = document.getElementById('desp-ate').value;
-  localStorage.setItem('gf_despesas', JSON.stringify(data));
-  calcDespesas();
-  toast('Despesas salvas! Incluídas no cálculo de preços.', 'success');
+  return data;
 }
 
-function loadDespesas() {
-  try {
-    const saved = JSON.parse(localStorage.getItem('gf_despesas') || '{}');
-    const set = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.value = val; };
-    DESP_FIELDS_FIXAS.forEach(f => { if (saved[f] != null) set('desp-' + f, saved[f]); });
-    if (saved.tcredito != null) set('desp-tcredito', saved.tcredito);
-    if (saved.tdebito != null)  set('desp-tdebito', saved.tdebito);
-    if (saved.tpix != null)     set('desp-tpix', saved.tpix);
-    if (saved.tmkt != null)     set('desp-tmkt', saved.tmkt);
-    if (saved.fat != null)      set('desp-fat', saved.fat);
-    if (saved.de)               set('desp-de', saved.de);
-    if (saved.ate)              set('desp-ate', saved.ate);
-    calcDespesas();
-  } catch(e) {}
+// Preenche os campos a partir de um objeto de despesas.
+function applyDespesas(saved) {
+  if (!saved) return;
+  const set = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.value = val; };
+  DESP_FIELDS_FIXAS.forEach(f => { if (saved[f] != null) set('desp-' + f, saved[f]); });
+  if (saved.tcredito != null) set('desp-tcredito', saved.tcredito);
+  if (saved.tdebito != null)  set('desp-tdebito', saved.tdebito);
+  if (saved.tpix != null)     set('desp-tpix', saved.tpix);
+  if (saved.tmkt != null)     set('desp-tmkt', saved.tmkt);
+  if (saved.fat != null)      set('desp-fat', saved.fat);
+  if (saved.de)               set('desp-de', saved.de);
+  if (saved.ate)              set('desp-ate', saved.ate);
+}
+
+async function saveDespesas() {
+  const data = collectDespesas();
+  // 1. Cache imediato no navegador (funciona offline e no modo demo)
+  localStorage.setItem(despesasStorageKey(), JSON.stringify(data));
+  calcDespesas();
+
+  // 2. Persiste no Supabase (fonte da verdade entre dispositivos)
+  if (!isDemo && sb && currentUser) {
+    try {
+      const { error } = await sb.from('despesas')
+        .upsert({ user_id: currentUser.id, data, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+      if (error) throw error;
+      toast('Despesas salvas na nuvem! Incluídas no cálculo de preços.', 'success');
+    } catch(e) {
+      toast('Despesas salvas no navegador (falha ao sincronizar na nuvem).', 'warning');
+    }
+  } else {
+    toast('Despesas salvas! Incluídas no cálculo de preços.', 'success');
+  }
+}
+
+async function loadDespesas() {
+  // 1. Carrega primeiro do cache local (rápido / offline)
+  try { applyDespesas(JSON.parse(localStorage.getItem(despesasStorageKey()) || '{}')); } catch(e) {}
+
+  // 2. Se logado, busca a versão da nuvem e sobrescreve (fonte da verdade)
+  if (!isDemo && sb && currentUser) {
+    try {
+      const { data: row } = await sb.from('despesas').select('data').eq('user_id', currentUser.id).maybeSingle();
+      if (row?.data) {
+        applyDespesas(row.data);
+        localStorage.setItem(despesasStorageKey(), JSON.stringify(row.data));
+      }
+    } catch(e) {}
+  }
+  calcDespesas();
 }
 
 /* ════════════════════════════════════════════════
