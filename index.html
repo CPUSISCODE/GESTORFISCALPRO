@@ -549,9 +549,14 @@ input[type=range] { accent-color:#10b981; }
           <p class="text-xs text-slate-400">GestorFiscal PRO — Gestão de contas</p>
         </div>
       </div>
-      <button onclick="closeAdminPanel()" class="px-4 py-2 rounded-xl text-sm font-bold bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 transition-all flex items-center gap-1.5">
-        <i data-lucide="x" class="w-4 h-4"></i> Fechar
-      </button>
+      <div class="flex gap-2">
+        <button onclick="openAdminCreate()" class="px-4 py-2 rounded-xl text-sm font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-all flex items-center gap-1.5">
+          <i data-lucide="user-plus" class="w-4 h-4"></i> Novo usuário
+        </button>
+        <button onclick="closeAdminPanel()" class="px-4 py-2 rounded-xl text-sm font-bold bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 transition-all flex items-center gap-1.5">
+          <i data-lucide="x" class="w-4 h-4"></i> Fechar
+        </button>
+      </div>
     </div>
 
     <!-- Stats rápidas -->
@@ -652,6 +657,88 @@ input[type=range] { accent-color:#10b981; }
       <button onclick="saveAdminEdit()" id="btn-ae-save" class="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5">
         <i data-lucide="save" class="w-3.5 h-3.5" id="icon-ae-save"></i>
         <span id="label-ae-save">Salvar alterações</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     MODAL: NOVO USUÁRIO (ADMIN)
+══════════════════════════════════════════════ -->
+<div id="modal-admin-create" class="hidden fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 no-print overflow-y-auto py-8">
+  <div class="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl anim-up relative overflow-hidden">
+    <div class="absolute top-0 left-0 w-full h-1.5 admin-badge"></div>
+    <div class="flex items-center justify-between mb-5">
+      <div class="flex items-center gap-2">
+        <div class="w-9 h-9 rounded-xl admin-badge flex items-center justify-center"><i data-lucide="user-plus" class="w-4 h-4 text-white"></i></div>
+        <h3 class="text-sm font-extrabold text-slate-800 dark:text-white">Novo usuário / login</h3>
+      </div>
+      <button onclick="closeAdminCreate()" class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"><i data-lucide="x" class="w-4 h-4"></i></button>
+    </div>
+
+    <div class="space-y-3">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">E-mail (login) *</label>
+          <input type="email" id="ac-email" autocomplete="off" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="usuario@empresa.com">
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Senha inicial *</label>
+          <input type="text" id="ac-password" autocomplete="off" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="mín. 6 caracteres">
+        </div>
+      </div>
+      <div>
+        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Razão Social / Nome</label>
+        <input type="text" id="ac-nome" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">CNPJ</label>
+          <input type="text" id="ac-cnpj" maxlength="18" oninput="maskCNPJ(this)" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Regime</label>
+          <select id="ac-regime" onchange="onAcRegimeChange()" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            <option value="MEI">MEI</option>
+            <option value="SN" selected>Simples Nacional</option>
+            <option value="LP">Lucro Presumido</option>
+            <option value="LR">Lucro Real</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">UF</label>
+          <input type="text" id="ac-uf" maxlength="2" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm uppercase focus:outline-none focus:ring-2 focus:ring-emerald-500" value="AC">
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Cidade</label>
+          <input type="text" id="ac-cidade" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+      </div>
+      <div id="ac-sn-block" class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Anexo Simples</label>
+          <select id="ac-sn-anexo" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            <option value="I">Anexo I</option><option value="II">Anexo II</option><option value="III">Anexo III</option><option value="IV">Anexo IV</option><option value="V">Anexo V</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Status inicial</label>
+          <select id="ac-status" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            <option value="active" selected>Ativo (acesso liberado)</option>
+            <option value="pending_payment">Aguardando pagamento</option>
+            <option value="pending">Aguardando análise</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex gap-2 mt-5">
+      <button onclick="closeAdminCreate()" class="flex-1 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-xs transition-all">Cancelar</button>
+      <button onclick="saveAdminCreate()" id="btn-ac-save" class="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5">
+        <i data-lucide="user-plus" class="w-3.5 h-3.5" id="icon-ac-save"></i>
+        <span id="label-ac-save">Criar usuário</span>
       </button>
     </div>
   </div>
@@ -901,6 +988,7 @@ input[type=range] { accent-color:#10b981; }
         <button onclick="setCfgTab('calculo')"  id="ctab-calculo"  class="cfg-tab-btn px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800"><i data-lucide="calculator" class="w-3 h-3"></i> Cálculo</button>
         <button onclick="setCfgTab('despesas')" id="ctab-despesas" class="cfg-tab-btn px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800"><i data-lucide="receipt" class="w-3 h-3"></i> Despesas</button>
         <button onclick="setCfgTab('drive')"    id="ctab-drive"    class="cfg-tab-btn px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800"><i data-lucide="hard-drive" class="w-3 h-3"></i> Drive</button>
+        <button onclick="setCfgTab('erp')"      id="ctab-erp"      class="cfg-tab-btn px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800"><i data-lucide="plug" class="w-3 h-3"></i> PDV/ERP</button>
       </div>
 
       <!-- ─── EMPRESA ─── -->
@@ -1096,6 +1184,36 @@ input[type=range] { accent-color:#10b981; }
               <i data-lucide="unlink" class="w-3.5 h-3.5"></i> Desconectar
             </button>
           </div>
+        </div>
+      </div>
+
+      <!-- ─── PDV / ERP ─── -->
+      <div id="cfg-panel-erp" class="cfg-panel hidden space-y-4">
+        <div class="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-4">
+          <h3 class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+            <i data-lucide="plug" class="w-3.5 h-3.5 text-emerald-500"></i> Integração com PDV / ERP
+          </h3>
+          <p class="text-xs text-slate-400">
+            Cole a chave de API do seu sistema de gestão (ERP/PDV) para importar notas diretamente,
+            sem precisar subir o XML manualmente. Deixe a estrutura pronta — a importação automática
+            é ativada assim que a integração com o seu ERP for concluída.
+          </p>
+          <div>
+            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Sistema ERP / PDV</label>
+            <input type="text" id="cfg-erp-provider" placeholder="Ex: Consinco, TOTVS, Bling, Tiny, Omie…" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">URL da API (endpoint)</label>
+            <input type="url" id="cfg-erp-url" placeholder="https://api.seuerp.com.br/v1" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Chave de API (Token)</label>
+            <input type="password" id="cfg-erp-key" placeholder="Cole aqui a chave de API do seu ERP" autocomplete="off" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono">
+            <p class="text-[10px] text-slate-400 mt-1">🔒 A chave fica associada à sua conta. Nunca a compartilhe publicamente.</p>
+          </div>
+          <button onclick="saveErpConfig()" class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all flex items-center gap-1.5">
+            <i data-lucide="save" class="w-3.5 h-3.5"></i> Salvar integração
+          </button>
         </div>
       </div>
 
@@ -2060,6 +2178,54 @@ async function saveAdminEdit() {
   }
 }
 
+/* ─── CRIAR USUÁRIO (ADMIN) ───────────────────── */
+function openAdminCreate() {
+  ['ac-email','ac-password','ac-nome','ac-cnpj','ac-cidade'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  document.getElementById('ac-uf').value = 'AC';
+  document.getElementById('ac-regime').value = 'SN';
+  document.getElementById('ac-sn-anexo').value = 'I';
+  document.getElementById('ac-status').value = 'active';
+  onAcRegimeChange();
+  document.getElementById('modal-admin-create').classList.remove('hidden');
+  lucide.createIcons();
+}
+function closeAdminCreate() { document.getElementById('modal-admin-create').classList.add('hidden'); }
+function onAcRegimeChange() {
+  document.getElementById('ac-sn-block').classList.toggle('hidden', document.getElementById('ac-regime').value !== 'SN');
+}
+
+async function saveAdminCreate() {
+  const email    = document.getElementById('ac-email').value.trim();
+  const password = document.getElementById('ac-password').value;
+  if (!email || !email.includes('@')) { toast('Informe um e-mail válido.', 'warning'); return; }
+  if (password.length < 6) { toast('A senha deve ter ao menos 6 caracteres.', 'warning'); return; }
+
+  const payload = {
+    email, password,
+    nome:     document.getElementById('ac-nome').value.trim(),
+    cnpj:     document.getElementById('ac-cnpj').value.trim(),
+    uf:       document.getElementById('ac-uf').value.trim().toUpperCase(),
+    cidade:   document.getElementById('ac-cidade').value.trim(),
+    regime:   document.getElementById('ac-regime').value,
+    sn_anexo: document.getElementById('ac-sn-anexo').value,
+    status:   document.getElementById('ac-status').value,
+  };
+
+  setBtnLoading('btn-ac-save', 'icon-ac-save', 'label-ac-save', true, 'Criando...');
+  try {
+    const { data, error } = await sb.functions.invoke('admin-create-user', { body: payload });
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+    toast('Usuário criado com sucesso!', 'success');
+    closeAdminCreate();
+    loadAdminData();
+  } catch(e) {
+    toast('Erro ao criar: ' + (e.message || e), 'error');
+  } finally {
+    setBtnLoading('btn-ac-save', 'icon-ac-save', 'label-ac-save', false);
+  }
+}
+
 function loadApp(demo) {
   hideAllScreens();
   document.getElementById('app-screen').classList.remove('hidden');
@@ -2109,7 +2275,29 @@ function applyEmpresaToConfig() {
   set('cfg-sn-anexo', empresaData.sn_anexo || 'I');
   set('cfg-rba', empresaData.sn_rba || 360000);
   set('cfg-drive', empresaData.drive_url || '');
+  set('cfg-erp-provider', empresaData.erp_provider || '');
+  set('cfg-erp-url', empresaData.erp_api_url || '');
+  set('cfg-erp-key', empresaData.erp_api_key || '');
   onRegimeChange();
+}
+
+async function saveErpConfig() {
+  empresaData.erp_provider = document.getElementById('cfg-erp-provider').value.trim();
+  empresaData.erp_api_url  = document.getElementById('cfg-erp-url').value.trim();
+  empresaData.erp_api_key  = document.getElementById('cfg-erp-key').value.trim();
+  if (!isDemo && sb && currentUser) {
+    try {
+      const { error } = await sb.from('empresas').update({
+        erp_provider: empresaData.erp_provider,
+        erp_api_url:  empresaData.erp_api_url,
+        erp_api_key:  empresaData.erp_api_key,
+      }).eq('user_id', currentUser.id);
+      if (error) throw error;
+      toast('Integração PDV/ERP salva!', 'success');
+    } catch(e) { toast('Erro ao salvar integração: ' + e.message, 'error'); }
+  } else {
+    toast('Integração salva (modo demo — não persiste).', 'info');
+  }
 }
 
 function onRegimeChange() {

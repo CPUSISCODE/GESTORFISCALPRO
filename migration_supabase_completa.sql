@@ -168,6 +168,11 @@ CREATE POLICY "own_despesas" ON despesas
   FOR ALL USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
+-- Campos para integração com o ERP/PDV do cliente (chave de API nas Configurações)
+ALTER TABLE empresas ADD COLUMN IF NOT EXISTS erp_provider TEXT;
+ALTER TABLE empresas ADD COLUMN IF NOT EXISTS erp_api_key  TEXT;
+ALTER TABLE empresas ADD COLUMN IF NOT EXISTS erp_api_url  TEXT;
+
 -- ════════════════════════════════════════════════════════════════
 -- FIM DA MIGRAÇÃO. Próximos passos manuais (fora do SQL):
 -- 1. Authentication → URL Configuration → Site URL = URL do GitHub Pages do app
