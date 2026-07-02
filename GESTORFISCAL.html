@@ -575,6 +575,89 @@ input[type=range] { accent-color:#10b981; }
 </div>
 
 <!-- ══════════════════════════════════════════════
+     MODAL: EDITAR USUÁRIO (ADMIN)
+══════════════════════════════════════════════ -->
+<div id="modal-admin-edit" class="hidden fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 no-print overflow-y-auto py-8">
+  <div class="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl anim-up relative overflow-hidden">
+    <div class="absolute top-0 left-0 w-full h-1.5 admin-badge"></div>
+    <div class="flex items-center justify-between mb-5">
+      <div class="flex items-center gap-2">
+        <div class="w-9 h-9 rounded-xl admin-badge flex items-center justify-center"><i data-lucide="user-cog" class="w-4 h-4 text-white"></i></div>
+        <div>
+          <h3 class="text-sm font-extrabold text-slate-800 dark:text-white">Editar usuário</h3>
+          <p class="text-[11px] text-slate-400" id="ae-email">—</p>
+        </div>
+      </div>
+      <button onclick="closeAdminEdit()" class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"><i data-lucide="x" class="w-4 h-4"></i></button>
+    </div>
+
+    <input type="hidden" id="ae-user-id">
+
+    <div class="space-y-3">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Razão Social</label>
+          <input type="text" id="ae-nome" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">CNPJ</label>
+          <input type="text" id="ae-cnpj" maxlength="18" oninput="maskCNPJ(this)" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">UF</label>
+          <input type="text" id="ae-uf" maxlength="2" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm uppercase focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Cidade</label>
+          <input type="text" id="ae-cidade" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+      </div>
+      <div>
+        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Regime Tributário</label>
+        <select id="ae-regime" onchange="onAeRegimeChange()" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+          <option value="MEI">MEI — Microempreendedor Individual</option>
+          <option value="SN">Simples Nacional</option>
+          <option value="LP">Lucro Presumido</option>
+          <option value="LR">Lucro Real</option>
+        </select>
+      </div>
+      <div id="ae-sn-block" class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Anexo Simples</label>
+          <select id="ae-sn-anexo" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            <option value="I">Anexo I (Comércio)</option>
+            <option value="II">Anexo II (Indústria)</option>
+            <option value="III">Anexo III</option>
+            <option value="IV">Anexo IV</option>
+            <option value="V">Anexo V</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Receita Bruta 12m (R$)</label>
+          <input type="number" id="ae-rba" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+      </div>
+
+      <div class="border-t border-slate-200 dark:border-slate-800 pt-3 mt-1">
+        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center gap-1"><i data-lucide="key-round" class="w-3 h-3"></i> Nova senha (opcional)</label>
+        <input type="text" id="ae-password" placeholder="Deixe em branco para não alterar" autocomplete="off" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        <p class="text-[10px] text-slate-400 mt-1">Mín. 6 caracteres. A senha é trocada com segurança no servidor.</p>
+      </div>
+    </div>
+
+    <div class="flex gap-2 mt-5">
+      <button onclick="closeAdminEdit()" class="flex-1 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-xs transition-all">Cancelar</button>
+      <button onclick="saveAdminEdit()" id="btn-ae-save" class="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5">
+        <i data-lucide="save" class="w-3.5 h-3.5" id="icon-ae-save"></i>
+        <span id="label-ae-save">Salvar alterações</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
      APP PRINCIPAL
 ══════════════════════════════════════════════ -->
 <div id="app-screen" class="hidden flex flex-col min-h-screen">
@@ -1836,6 +1919,10 @@ function renderAdminUsers(filter) {
             class="px-3 py-1.5 rounded-lg text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-red-100 dark:hover:bg-red-950/50 hover:text-red-500 transition-all whitespace-nowrap">
             🔒 Suspender
           </button>` : ''}
+        <button onclick="openAdminEdit('${u.user_id}')"
+          class="px-3 py-1.5 rounded-lg text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all whitespace-nowrap flex items-center gap-1">
+          <i data-lucide="pencil" class="w-3 h-3"></i> Editar
+        </button>
       </div>
     </div>`).join('');
   lucide.createIcons();
@@ -1848,6 +1935,67 @@ async function adminActivate(userId, newStatus) {
     toast('Status atualizado com sucesso!', 'success');
     loadAdminData();
   } catch(e) { toast('Erro: ' + e.message, 'error'); }
+}
+
+/* ─── EDITAR USUÁRIO (ADMIN) ──────────────────── */
+function openAdminEdit(userId) {
+  const u = (window._adminAllUsers || []).find(x => x.user_id === userId);
+  if (!u) { toast('Usuário não encontrado.', 'error'); return; }
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val ?? ''; };
+  set('ae-user-id', u.user_id);
+  document.getElementById('ae-email').textContent = u.nome || u.cnpj || u.user_id;
+  set('ae-nome', u.nome);
+  set('ae-cnpj', u.cnpj);
+  set('ae-uf', u.uf);
+  set('ae-cidade', u.cidade);
+  set('ae-regime', u.regime || 'SN');
+  set('ae-sn-anexo', u.sn_anexo || 'I');
+  set('ae-rba', u.sn_rba || 360000);
+  set('ae-password', '');
+  onAeRegimeChange();
+  document.getElementById('modal-admin-edit').classList.remove('hidden');
+  lucide.createIcons();
+}
+
+function closeAdminEdit() {
+  document.getElementById('modal-admin-edit').classList.add('hidden');
+}
+
+function onAeRegimeChange() {
+  const r = document.getElementById('ae-regime').value;
+  document.getElementById('ae-sn-block').classList.toggle('hidden', r !== 'SN');
+}
+
+async function saveAdminEdit() {
+  const userId = document.getElementById('ae-user-id').value;
+  if (!userId) return;
+  const empresa = {
+    nome:     document.getElementById('ae-nome').value.trim(),
+    cnpj:     document.getElementById('ae-cnpj').value.trim(),
+    uf:       document.getElementById('ae-uf').value.trim().toUpperCase(),
+    cidade:   document.getElementById('ae-cidade').value.trim(),
+    regime:   document.getElementById('ae-regime').value,
+    sn_anexo: document.getElementById('ae-sn-anexo').value,
+    sn_rba:   parseFloat(document.getElementById('ae-rba').value) || 360000,
+  };
+  const password = document.getElementById('ae-password').value;
+  if (password && password.length < 6) { toast('A senha deve ter ao menos 6 caracteres.', 'warning'); return; }
+
+  setBtnLoading('btn-ae-save', 'icon-ae-save', 'label-ae-save', true, 'Salvando...');
+  try {
+    const payload = { target_user_id: userId, empresa };
+    if (password) payload.password = password;
+    const { data, error } = await sb.functions.invoke('admin-update-user', { body: payload });
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+    toast('Usuário atualizado com sucesso!' + (password ? ' Senha redefinida.' : ''), 'success');
+    closeAdminEdit();
+    loadAdminData();
+  } catch(e) {
+    toast('Erro ao salvar: ' + (e.message || e), 'error');
+  } finally {
+    setBtnLoading('btn-ae-save', 'icon-ae-save', 'label-ae-save', false);
+  }
 }
 
 function loadApp(demo) {
