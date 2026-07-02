@@ -658,6 +658,27 @@ input[type=range] { accent-color:#10b981; }
 </div>
 
 <!-- ══════════════════════════════════════════════
+     MODAL: LOG / MEMÓRIA DE CÁLCULO
+══════════════════════════════════════════════ -->
+<div id="modal-calc-log" class="hidden fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 no-print py-8">
+  <div class="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-lg w-full shadow-2xl anim-up relative overflow-hidden">
+    <div class="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-slate-600 to-slate-800"></div>
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-2">
+        <div class="w-9 h-9 rounded-xl bg-slate-800 dark:bg-slate-700 flex items-center justify-center"><i data-lucide="file-text" class="w-4 h-4 text-white"></i></div>
+        <div>
+          <h3 class="text-sm font-extrabold text-slate-800 dark:text-white">Memória de Cálculo</h3>
+          <p class="text-[11px] text-slate-400">O rastro matemático completo do preço</p>
+        </div>
+      </div>
+      <button onclick="closeCalcLog()" class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"><i data-lucide="x" class="w-4 h-4"></i></button>
+    </div>
+    <pre id="calc-log-content" class="text-[11px] leading-relaxed font-mono bg-slate-50 dark:bg-[#020617] border border-slate-200 dark:border-slate-800 rounded-xl p-4 overflow-x-auto whitespace-pre text-slate-700 dark:text-slate-200 max-h-[60vh]"></pre>
+    <button onclick="closeCalcLog()" class="w-full mt-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all">Fechar</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
      APP PRINCIPAL
 ══════════════════════════════════════════════ -->
 <div id="app-screen" class="hidden flex flex-col min-h-screen">
@@ -2448,8 +2469,18 @@ function calcCustoEfetivo(p, freteRS, icmsEntPct, ipi) {
   const icmsDesonerado   = p.icmsDesonerado ?? 0;
   const stAliquota       = p.icmsEntradaAliquotaOverride ?? p.icmsEntradaAliquota ?? 0;
   const icmsEntradaSTVal = p.vUnCom * stAliquota / 100; // ICMS-ST/Antecipação automático (Acre)
-  return p.vUnCom - desconto - icmsDesonerado + freteRS + outrasDespesas
+  // Custo Base = (Compra - Desconto - Desonerado) + Frete + Outras + (ICMS entrada + IPI) + ST
+  const custoBase = p.vUnCom - desconto - icmsDesonerado + freteRS + outrasDespesas
        + p.vUnCom * (icmsEntPct / 100 + ipi / 100) + icmsEntradaSTVal;
+  return aplicaFatorConversao(custoBase, p);
+}
+
+// Fator de conversão / fracionamento: distribui o custo da embalagem fechada
+// (ex.: 1 caixa) pela unidade de venda (ex.: dividir por 50). Aplica sobre o Custo Base.
+function aplicaFatorConversao(custoBase, p) {
+  const q = p.convQty;
+  if (!q || q <= 0) return custoBase;
+  return p.convOp === 'div' ? custoBase / q : custoBase * q;
 }
 
 function calcPreco(custoEf, aliquota, margem) {
@@ -2559,6 +2590,124 @@ function setProdIpi(i, v)   { produtos[i].ipi = parseFloat(v)||0; renderProducts
 function setProdAjuste(i, v){ produtos[i].ajuste = parseFloat(v)||null; }
 
 function recalcAll() { renderProducts(); }
+
+/* ── Contexto de precificação de um produto (CMV + alíquota do regime) ──
+   Usa os mesmos defaults/config das demais telas para nunca divergir. */
+function getPricingContext(p) {
+  const regime = empresaData.regime || 'SN';
+  const anexo  = empresaData.sn_anexo || 'I';
+  const rba    = empresaData.sn_rba || 360000;
+  const alq    = calcAliquota(regime, anexo, rba);
+  const freteGlobal = parseFloat(document.getElementById('cfg-frete')?.value)  || 0;
+  const icmsE       = parseFloat(document.getElementById('cfg-icms-entrada')?.value) || 12;
+  const freteR = p.freteRS      ?? freteGlobal;
+  const ipi    = p.ipi          ?? getIpiFromNcm(p.ncm);
+  const icms   = p.icmsEntradaPct ?? icmsE;
+  const cmv    = calcCustoEfetivo(p, freteR, icms, ipi);
+  return { cmv, alq, regime };
+}
+
+/* ── LUCRO LÍQUIDO DESEJADO (item urgente) ──
+   Converte o lucro alvo (em % sobre a venda OU em R$) para a margem
+   equivalente do motor (margemCustom), de modo que o preço sugerido
+   atualize consistentemente em TODAS as telas (tabela, card, impressão). */
+function setLucroDesejado(i, mode, raw) {
+  const p = produtos[i];
+  if (!p) return;
+  const v = parseFloat(String(raw).replace(',', '.')) || 0;
+  const { cmv, alq } = getPricingContext(p);
+  const despFrac = (despesasTotalPct || 0) / 100;
+
+  p.lucroDesejadoMode  = mode;
+  p.lucroDesejadoValor = raw;
+  p.ajuste = null; // o lucro desejado passa a comandar o preço, não o ajuste manual
+
+  if (v <= 0) { p.margemCustom = undefined; renderSidebar(); return; }
+
+  if (mode === 'pct') {
+    // lucro em % sobre a venda = a própria margem de contribuição do motor
+    p.margemCustom = v;
+  } else {
+    // lucro em R$: preço = (L + CMV) / (1 - alíquota - despesas%); margem = L/preço
+    const denom = 1 - alq - despFrac;
+    const preco = denom > 0 ? (v + cmv) / denom : (cmv + v);
+    p.margemCustom = preco > 0 ? (v / preco) * 100 : 0;
+  }
+  renderSidebar();
+}
+
+/* ── FATOR DE CONVERSÃO / FRACIONAMENTO ── */
+function setConvOp(i, op)  { produtos[i].convOp = op; renderSidebar(); }
+function setConvQty(i, v)  { produtos[i].convQty = parseFloat(String(v).replace(',', '.')) || 0; renderSidebar(); }
+
+/* ── MEMÓRIA DE CÁLCULO (botão "Log") ── */
+function openCalcLog(i) {
+  const p = produtos[i];
+  if (!p) return;
+  const { cmv, alq, regime } = getPricingContext(p);
+  const freteGlobal = parseFloat(document.getElementById('cfg-frete')?.value)  || 0;
+  const icmsE       = parseFloat(document.getElementById('cfg-icms-entrada')?.value) || 12;
+  const desconto       = p.desconto ?? 0;
+  const outras         = p.outrasDespesas ?? 0;
+  const desonerado     = p.icmsDesonerado ?? 0;
+  const freteR         = p.freteRS ?? freteGlobal;
+  const ipi            = p.ipi ?? getIpiFromNcm(p.ncm);
+  const icms           = p.icmsEntradaPct ?? icmsE;
+  const stAliq         = p.icmsEntradaAliquotaOverride ?? p.icmsEntradaAliquota ?? 0;
+  const icmsVal        = p.vUnCom * icms / 100;
+  const ipiVal         = p.vUnCom * ipi / 100;
+  const stVal          = p.vUnCom * stAliq / 100;
+  const custoBase      = p.vUnCom - desconto - desonerado + freteR + outras + icmsVal + ipiVal + stVal;
+  const temConv        = p.convQty && p.convQty > 0;
+  const margem         = p.margemCustom ?? (parseFloat(document.getElementById('cfg-margem')?.value) || 30);
+  const despPct        = despesasTotalPct || 0;
+  const preco          = p.ajuste || calcPreco(cmv, alq, margem);
+
+  const L = (n) => fmtBRL(n);
+  const linhas = [];
+  linhas.push('════════ MEMÓRIA DE CÁLCULO ════════');
+  linhas.push(`Produto: ${p.descricao}`);
+  linhas.push(`NCM: ${p.ncm}  ·  Regime: ${regime}  ·  Qtd nota: ${p.qCom}`);
+  linhas.push('');
+  linhas.push('① CUSTO BASE (por unidade da nota)');
+  linhas.push(`   Valor de Compra .............. ${L(p.vUnCom)}`);
+  linhas.push(`   (-) Desconto ................. ${L(desconto)}`);
+  linhas.push(`   (-) ICMS Desonerado (Suframa)  ${L(desonerado)}`);
+  linhas.push(`   (+) Frete de entrada ......... ${L(freteR)}`);
+  linhas.push(`   (+) Outras despesas .......... ${L(outras)}`);
+  linhas.push(`   (+) ICMS entrada (${icms.toFixed(2)}%) ...... ${L(icmsVal)}`);
+  linhas.push(`   (+) IPI (${ipi.toFixed(2)}%) ............... ${L(ipiVal)}`);
+  linhas.push(`   (+) ICMS-ST/Antecip. (${stAliq.toFixed(2)}%) . ${L(stVal)}`);
+  linhas.push(`   ──────────────────────────────`);
+  linhas.push(`   (=) Custo Base ............... ${L(custoBase)}`);
+  if (temConv) {
+    linhas.push('');
+    linhas.push('② FATOR DE CONVERSÃO / FRACIONAMENTO');
+    linhas.push(`   ${p.convOp === 'div' ? 'Dividir' : 'Multiplicar'} por ${p.convQty}`);
+    linhas.push(`   ${L(custoBase)} ${p.convOp === 'div' ? '÷' : '×'} ${p.convQty} = ${L(cmv)}`);
+    linhas.push(`   (=) CMV por unidade de venda . ${L(cmv)}`);
+  } else {
+    linhas.push(`   (=) CMV (sem fracionamento) .. ${L(cmv)}`);
+  }
+  linhas.push('');
+  linhas.push('③ PREÇO DE VENDA');
+  linhas.push(`   Fórmula: Preço = CMV ÷ (1 − alíquota − margem% − despesas%)`);
+  linhas.push(`   CMV .......................... ${L(cmv)}`);
+  linhas.push(`   Alíquota do regime ........... ${(alq*100).toFixed(2)}%`);
+  linhas.push(`   Margem (lucro sobre venda) ... ${margem.toFixed(2)}%`);
+  linhas.push(`   Despesas operacionais ........ ${despPct.toFixed(2)}%`);
+  linhas.push(`   ──────────────────────────────`);
+  linhas.push(`   (=) Preço de Venda Sugerido .. ${L(preco)}`);
+  if (p.lucroDesejadoValor) {
+    linhas.push('');
+    linhas.push(`   ⓘ Lucro líquido desejado informado: ${p.lucroDesejadoMode === 'rs' ? L(parseFloat(String(p.lucroDesejadoValor).replace(',','.'))||0) : (parseFloat(String(p.lucroDesejadoValor).replace(',','.'))||0)+'%'}`);
+  }
+
+  document.getElementById('calc-log-content').textContent = linhas.join('\n');
+  document.getElementById('modal-calc-log').classList.remove('hidden');
+  lucide.createIcons();
+}
+function closeCalcLog() { document.getElementById('modal-calc-log').classList.add('hidden'); }
 
 /* ════════════════════════════════════════════════
    HISTORY
@@ -3204,6 +3353,91 @@ function renderSidebar() {
   renderSidebarDetail(alq, margem, freteGlobal, icmsE);
 }
 
+/* ════════════════════════════════════════════════
+   TABELA ESTILO-ERP (visão "bate o olho" — igual à planilha do ERP)
+   Recebe os valores já calculados e monta uma tabela vertical com
+   colunas Descrição | R$ | %, agrupada em Preço de Compra / CST Entrada /
+   Preço de Venda / CST Saída, terminando no Lucro Líquido.
+════════════════════════════════════════════════ */
+function buildErpTable(v) {
+  const brl = (n) => fmtBRL(n);
+  const pct = (n) => (n || 0).toFixed(2) + '%';
+  // linha comum: sinal, label, valor R$, valor %
+  const r = (sign, label, valor, perc, opt = {}) => {
+    const sc = sign === '-' ? 'text-red-500' : sign === '+' ? 'text-blue-500' : 'text-slate-400';
+    const valColor = opt.strong ? 'font-extrabold text-slate-800 dark:text-white' : 'font-semibold text-slate-700 dark:text-slate-200';
+    return `<tr class="${opt.bg || ''}">
+      <td class="px-3 py-1.5 text-[11px] text-slate-600 dark:text-slate-300">${sign ? `<span class="${sc} font-bold mr-1">(${sign})</span>` : ''}${label}</td>
+      <td class="px-3 py-1.5 text-[11px] text-right ${valColor} whitespace-nowrap">${valor != null ? brl(valor) : ''}</td>
+      <td class="px-3 py-1.5 text-[10px] text-right text-slate-400 whitespace-nowrap">${perc != null ? pct(perc) : ''}</td>
+    </tr>`;
+  };
+  const sec = (label, color) => `<tr><td colspan="3" class="px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider ${color}">${label}</td></tr>`;
+  const totalRow = (label, valor, perc, color) => `<tr class="border-t-2 border-slate-300 dark:border-slate-600">
+      <td class="px-3 py-2 text-[11px] font-extrabold text-slate-700 dark:text-slate-200"><span class="text-slate-400 mr-1">(=)</span>${label}</td>
+      <td class="px-3 py-2 text-xs text-right font-extrabold ${color || 'text-slate-800 dark:text-white'} whitespace-nowrap">${brl(valor)}</td>
+      <td class="px-3 py-2 text-[10px] text-right font-bold ${color || 'text-slate-400'} whitespace-nowrap">${perc != null ? pct(perc) : ''}</td>
+    </tr>`;
+
+  const pctOf = (val, base) => base > 0 ? (val / base) * 100 : 0;
+
+  let rows = '';
+  // ── Preço de compra / entrada ──
+  rows += sec('Cálculo de Preço', 'bg-slate-100 dark:bg-slate-800/60 text-slate-500');
+  rows += r('', 'Preço de Compra', v.precoCompra, null);
+  rows += r('-', 'Descontos', v.desconto, pctOf(v.desconto, v.precoCompra));
+  rows += r('+', 'Outras Despesas', v.outrasDespesas, pctOf(v.outrasDespesas, v.precoCompra));
+  rows += r('+', 'Frete', v.freteVal, pctOf(v.freteVal, v.precoCompra));
+  if (v.icmsDesonerado > 0) rows += r('-', 'ICMS Desonerado (Suframa)', v.icmsDesonerado, pctOf(v.icmsDesonerado, v.precoCompra));
+  rows += totalRow('Preço Líquido', v.precoLiquido, null, 'text-slate-800 dark:text-white');
+
+  // ── CST Entrada ──
+  rows += sec('CST Entrada', 'bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400');
+  rows += r('+', 'IPI', v.ipiVal, v.ipi);
+  rows += r('+', 'ICMS-ST / Antecipação', v.icmsEntradaVal, v.icmsEntradaAliquota);
+  rows += r('+', 'ICMS Entrada (fornecedor)', v.icmsVal, v.icmsRegular);
+  if (v.temConv) rows += r('', `Fracionamento (${v.convOp === 'div' ? '÷' : '×'} ${v.convQty})`, null, null);
+  rows += totalRow('CMV / Custo', v.cmv, null, 'text-blue-700 dark:text-blue-300');
+  rows += r('', 'Markup (CMV)', null, v.markup);
+
+  // ── Preço de venda ──
+  rows += sec('Preço de Venda', 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400');
+  rows += r('', 'Preço de Venda Sugerido', v.precoVenda, null, { strong: true });
+  if (v.descontoVenda > 0) rows += r('-', 'Desconto na venda', v.descontoVenda, pctOf(v.descontoVenda, v.precoVenda));
+  rows += r('', 'Preço à Vista', v.precoVista, null);
+
+  // ── CST Saída ──
+  rows += sec('CST Saída', 'bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400');
+  rows += r('-', 'CMV', v.cmv, pctOf(v.cmv, v.precoVenda));
+  if (v.irpjCsll > 0)     rows += r('+', v.regime === 'SN' ? 'Simples Nacional' : 'IRPJ / CSLL', v.irpjCsll, pctOf(v.irpjCsll, v.precoVenda));
+  if (v.icmsDebito > 0)   rows += r('+', 'Débito de ICMS', v.icmsDebito, pctOf(v.icmsDebito, v.precoVenda));
+  if (v.pisDebito > 0)    rows += r('+', 'Débito de PIS', v.pisDebito, pctOf(v.pisDebito, v.precoVenda));
+  if (v.cofinsDebito > 0) rows += r('+', 'Débito de COFINS', v.cofinsDebito, pctOf(v.cofinsDebito, v.precoVenda));
+  if (v.comissaoVal > 0)  rows += r('+', 'Comissão', v.comissaoVal, pctOf(v.comissaoVal, v.precoVenda));
+  if (v.totalDespOper > 0)rows += r('-', 'Custo Operacional (Desp. Fixas)', v.totalDespOper, v.despPct);
+  rows += totalRow('Lucro Líquido', v.lucroLiquido, v.mcPct, v.mcPct >= 20 ? 'text-emerald-600 dark:text-emerald-400' : v.mcPct >= 10 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400');
+
+  return `
+    <div class="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+      <div class="bg-slate-800 dark:bg-slate-900 px-4 py-2 flex items-center gap-2">
+        <i data-lucide="table" class="w-3.5 h-3.5 text-emerald-400"></i>
+        <span class="text-[11px] font-extrabold text-white uppercase tracking-wider">Cálculo de Preço — Resumo</span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full border-collapse">
+          <thead>
+            <tr class="bg-slate-50 dark:bg-slate-800/40 text-[9px] uppercase tracking-wider text-slate-400">
+              <th class="px-3 py-1.5 text-left font-bold">Descrição</th>
+              <th class="px-3 py-1.5 text-right font-bold">Valor (R$)</th>
+              <th class="px-3 py-1.5 text-right font-bold">%</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 dark:divide-slate-800/60">${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
 function renderSidebarDetail(alq, defaultMargem, defaultFrete, icmsE) {
   if (!produtos.length) return;
   const p = produtos[selectedProductIdx];
@@ -3234,6 +3468,22 @@ function renderSidebarDetail(alq, defaultMargem, defaultFrete, icmsE) {
   // ── CMV: usa a MESMA função das demais telas (tabela/impressão/lista), para nunca divergir.
   const cmv = calcCustoEfetivo(p, freteVal, icmsRegular, ipi);
   const custoContabil = cmv;
+
+  // ── Fator de conversão / fracionamento ──
+  const convOp  = p.convOp || 'div';
+  const convQty = p.convQty || 0;
+  const temConv = convQty > 0;
+  // Valores em R$ dos componentes de entrada (para a tabela estilo-ERP e o rastro)
+  const ipiVal  = precoCompra * ipi / 100;
+  const icmsVal = precoCompra * icmsRegular / 100;
+  const precoLiquido = precoCompra - desconto + outrasDespesas + freteVal;
+  // Custo Base antes de aplicar o fator (para exibir o rastro na tela)
+  const custoBaseSemConv = precoCompra - desconto - icmsDesonerado + freteVal + outrasDespesas
+    + precoCompra * (icmsRegular / 100 + ipi / 100) + icmsEntradaVal;
+
+  // ── Lucro líquido desejado (valores digitados pelo usuário) ──
+  const ldMode = p.lucroDesejadoMode || 'pct';
+  const ldVal  = p.lucroDesejadoValor ?? '';
 
   // ── PREÇO DE VENDA ────────────────────────────────
   const precoVenda     = p.ajuste || calcPreco(cmv, alq, m);
@@ -3324,6 +3574,16 @@ function renderSidebarDetail(alq, defaultMargem, defaultFrete, icmsE) {
       </div>
     </div>
 
+    <!-- ⓪ RESUMO ESTILO-ERP (bate o olho) -->
+    ${buildErpTable({
+      precoCompra, desconto, outrasDespesas, freteVal, icmsDesonerado, precoLiquido,
+      ipiVal, ipi, icmsEntradaVal, icmsEntradaAliquota, icmsVal, icmsRegular,
+      temConv, convOp, convQty, cmv, markup,
+      precoVenda, descontoVenda, precoVista,
+      regime, irpjCsll, icmsDebito, pisDebito, cofinsDebito, comissaoVal,
+      totalDespOper, despPct, lucroLiquido, mcPct
+    })}
+
     <!-- ① CUSTO DE ENTRADA -->
     <div class="bg-white dark:bg-[#0f172a] border border-blue-200 dark:border-blue-900/40 rounded-xl overflow-hidden">
       <div class="bg-blue-50 dark:bg-blue-950/30 px-4 py-2 flex items-center gap-2 border-b border-blue-200 dark:border-blue-900/40">
@@ -3351,6 +3611,23 @@ function renderSidebarDetail(alq, defaultMargem, defaultFrete, icmsE) {
             <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">(+) Outras Despesas (R$)${p.outrasDespesas>0?'<span class="ml-1 text-blue-400 normal-case font-normal">do XML</span>':''}</div>
             ${sInp('outrasDespesas', outrasDespesas||'', 9999, '0.01')}
           </div>
+        </div>
+
+        <!-- FATOR DE CONVERSÃO / FRACIONAMENTO -->
+        <div class="bg-slate-50 dark:bg-slate-900 rounded-lg p-2.5 border border-slate-200 dark:border-slate-700 mb-2">
+          <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1"><i data-lucide="divide" class="w-3 h-3 text-blue-500"></i> Fator de Conversão / Fracionamento</div>
+          <div class="flex gap-2 items-center">
+            <select onchange="setConvOp(${idx}, this.value)" class="px-2 py-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-blue-500">
+              <option value="div" ${convOp==='div'?'selected':''}>Dividir ÷</option>
+              <option value="mul" ${convOp==='mul'?'selected':''}>Multiplicar ×</option>
+            </select>
+            <input type="number" value="${convQty||''}" placeholder="ex: 50" min="0" step="1" onchange="setConvQty(${idx}, this.value)"
+              class="flex-1 w-full px-2 py-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-blue-500">
+            <span class="text-[10px] text-slate-400 whitespace-nowrap">un. venda</span>
+          </div>
+          ${temConv
+            ? `<div class="text-[10px] text-slate-500 dark:text-slate-400 mt-1.5">Custo Base ${fmtBRL(custoBaseSemConv)} ${convOp==='div'?'÷':'×'} ${convQty} = <strong class="text-blue-600 dark:text-blue-400">${fmtBRL(cmv)}</strong> / un. de venda</div>`
+            : `<div class="text-[10px] text-slate-400 mt-1.5 italic">Sem fracionamento — 1 unidade da nota = 1 unidade de venda.</div>`}
         </div>
         ${row('Preço de Compra', precoCompra, '')}
         ${desconto > 0 ? row('Desconto', desconto, 'text-red-400', '-') : ''}
@@ -3458,6 +3735,28 @@ function renderSidebarDetail(alq, defaultMargem, defaultFrete, icmsE) {
           </div>
         </div>
 
+        <!-- ⚡ LUCRO LÍQUIDO DESEJADO -->
+        <div class="bg-emerald-50 dark:bg-emerald-950/20 rounded-lg p-3 border-2 border-emerald-300 dark:border-emerald-800 mt-2">
+          <div class="text-[10px] font-extrabold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider mb-2 flex items-center gap-1">
+            <i data-lucide="target" class="w-3.5 h-3.5"></i> Lucro Líquido Desejado
+          </div>
+          <div class="flex gap-2 items-stretch">
+            <select id="ld-mode-${idx}" onchange="setLucroDesejado(${idx}, this.value, document.getElementById('ld-val-${idx}').value)"
+              class="px-2 py-1.5 text-xs bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 rounded-lg outline-none focus:ring-1 focus:ring-emerald-500">
+              <option value="pct" ${ldMode==='pct'?'selected':''}>% sobre venda</option>
+              <option value="rs"  ${ldMode==='rs'?'selected':''}>R$ por unidade</option>
+            </select>
+            <input type="number" id="ld-val-${idx}" value="${ldVal}" placeholder="${ldMode==='pct'?'ex: 15':'ex: 50,00'}" step="0.01" min="0"
+              onchange="setLucroDesejado(${idx}, document.getElementById('ld-mode-${idx}').value, this.value)"
+              class="flex-1 w-full px-2 py-1.5 text-sm bg-white dark:bg-slate-900 border-2 border-emerald-300 dark:border-emerald-700 rounded-lg outline-none focus:ring-1 focus:ring-emerald-500 font-extrabold text-emerald-700 dark:text-emerald-300">
+          </div>
+          <div class="mt-2 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400">
+            <span>Preço resultante: <strong class="text-emerald-600 dark:text-emerald-400 text-xs">${fmtBRL(precoVenda)}</strong></span>
+            <span>Lucro líq.: <strong class="text-emerald-600 dark:text-emerald-400 text-xs">${fmtBRL(lucroLiquido)}</strong> (${mcPct.toFixed(1)}%)</span>
+          </div>
+          <p class="text-[9px] text-slate-400 mt-1">Digite quanto quer ganhar (em % da venda ou R$ por unidade) e o preço sugerido é recalculado na hora.</p>
+        </div>
+
         <!-- CST SAÍDA -->
         <div class="bg-red-50 dark:bg-red-950/10 rounded-lg p-3 border border-red-100 dark:border-red-900/30 mt-2">
           <div class="text-[10px] font-extrabold text-red-600 dark:text-red-400 uppercase tracking-wider mb-2">CST Saída — Impostos sobre a Venda</div>
@@ -3538,6 +3837,11 @@ function renderSidebarDetail(alq, defaultMargem, defaultFrete, icmsE) {
         <span class="font-bold">${markup.toFixed(1)}% &nbsp;=&nbsp; ${fmtBRL(precoVenda - cmv)} a mais que o custo</span>
       </div>
     </div>
+
+    <!-- BOTÃO LOG (memória de cálculo) -->
+    <button onclick="openCalcLog(${idx})" class="w-full py-2.5 rounded-xl bg-slate-800 dark:bg-slate-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-slate-700 dark:hover:bg-slate-600 transition-all">
+      <i data-lucide="file-text" class="w-3.5 h-3.5"></i> Log — ver memória de cálculo
+    </button>
 
   </div>`;
   lucide.createIcons();
