@@ -521,10 +521,10 @@ input[type=range] { accent-color:#10b981; }
       <p class="text-xs text-slate-400 mt-2">Isso pode levar alguns instantes após o pagamento.</p>
     </div>
 
-    <button id="btn-pay" onclick="goToStripe()" class="w-full py-3.5 rounded-2xl text-sm font-extrabold bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 mb-3">
+    <button id="btn-pay" onclick="goToMercadoPago()" class="w-full py-3.5 rounded-2xl text-sm font-extrabold bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 mb-3">
       <i data-lucide="credit-card" class="w-4 h-4"></i> Adquirir Licença
     </button>
-    <p class="text-[11px] text-center text-slate-400 mb-2">Pagamento seguro via Stripe 🔒</p>
+    <p class="text-[11px] text-center text-slate-400 mb-2">Pagamento seguro via Mercado Pago 🔒</p>
     <p class="text-[11px] text-center text-slate-400 mb-4">Precisa de ajuda? Fale pelo <button onclick="abrirWhatsApp(event)" class="text-emerald-500 font-bold hover:underline">WhatsApp</button></p>
     <button onclick="doLogout()" class="w-full py-2.5 rounded-xl text-sm font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-all">
       Sair da conta
@@ -1006,8 +1006,8 @@ input[type=range] { accent-color:#10b981; }
 /* ════════════════════════════════════════════════
    CONSTANTES
 ════════════════════════════════════════════════ */
-const GF_SB_URL = 'https://qaiqflcxfxygynumapyp.supabase.co';
-const GF_SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhaXFmbGN4Znh5Z3ludW1hcHlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1ODQ2NDMsImV4cCI6MjA5NzE2MDY0M30.pAViYST7ZWOVCcIVSGu6GbD005WgoTxQpwCj6iQTYKU';
+const GF_SB_URL = 'https://wnwceqoafxvnyqcostpi.supabase.co';
+const GF_SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indud2NlcW9hZnh2bnlxY29zdHBpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyOTA5OTksImV4cCI6MjA5Njg2Njk5OX0.rrYIu7H0JbnBLSQeJ63diErTjNJemVpY6CqFzu0QgSU';
 const DEMO_EMAIL = 'demo@gestorfiscal.com.br';
 const DEMO_PASS  = 'gestorfiscal2026';
 
@@ -1269,11 +1269,11 @@ const LR = { pis:.0165, cofins:.076, icms:.17 };
    STATE
 ════════════════════════════════════════════════ */
 /* ════════════════════════════════════════════════
-   STRIPE — LINKS POR REGIME (crie no dashboard.stripe.com)
+   MERCADO PAGO — a assinatura é criada dinamicamente pela Edge Function
+   "mp-create-subscription" (usa MP_ACCESS_TOKEN no servidor, nunca no frontend).
+   Ver EDGE_FUNCTION_mercadopago-create-subscription.ts
 ════════════════════════════════════════════════ */
-// Link único para todos os regimes — R$ 100,00/mês
-const STRIPE_LINK_UNIVERSAL = 'https://buy.stripe.com/dRm28q8kfdt7bufa9d00004';
-const STRIPE_LINKS = { MEI: STRIPE_LINK_UNIVERSAL, SN: STRIPE_LINK_UNIVERSAL, LP: STRIPE_LINK_UNIVERSAL, LR: STRIPE_LINK_UNIVERSAL };
+const MP_PRECO_MENSAL = 100; // R$ 100,00/mês — mesmo valor para todos os regimes
 
 // WhatsApp de suporte (altere o número abaixo)
 const WHATSAPP_NUMERO = '5519989765398';
@@ -1541,7 +1541,7 @@ async function afterLogin(user) {
     isAdmin = !!adminRow;
   } catch(e) { isAdmin = false; }
 
-  // Checa se voltou de pagamento Stripe
+  // Checa se voltou de pagamento do Mercado Pago
   const urlParams = new URLSearchParams(window.location.search);
   if (urlParams.get('payment_success') === '1') {
     history.replaceState({}, '', window.location.pathname);
@@ -1692,20 +1692,31 @@ function renderPaymentCard() {
     </ul>`;
 }
 
-function goToStripe() {
-  const regime = empresaData.regime || 'SN';
-  const link   = STRIPE_LINKS[regime] || STRIPE_LINKS.SN;
-  if (link.includes('COLOQUE_LINK')) {
-    toast('Links do Stripe ainda não configurados. Contate o administrador.', 'warning');
-    return;
-  }
-  // client_reference_id é passado via query string — Stripe injeta no checkout.session.completed
-  window.open(`${link}?client_reference_id=${currentUser.id}`, '_blank');
-  document.getElementById('payment-verifying').classList.remove('hidden');
-  document.getElementById('btn-pay').classList.add('opacity-50', 'pointer-events-none');
-  document.getElementById('btn-pay').innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 spinner"></i> Aguardando pagamento…';
+async function goToMercadoPago() {
+  const btn = document.getElementById('btn-pay');
+  btn.classList.add('opacity-50', 'pointer-events-none');
+  btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 spinner"></i> Gerando link de pagamento…';
   lucide.createIcons();
-  startStatusPolling();
+  try {
+    if (!sb) throw new Error('Serviço indisponível.');
+    // back_url: para onde o Mercado Pago devolve o usuário após o checkout.
+    // ?payment_success=1 é o mesmo parâmetro que afterLogin() já sabe interpretar.
+    const backUrl = window.location.origin + window.location.pathname + '?payment_success=1';
+    const { data, error } = await sb.functions.invoke('mp-create-subscription', { body: { back_url: backUrl } });
+    if (error) throw error;
+    if (!data?.init_point) throw new Error(data?.error || 'Link de pagamento não retornado.');
+
+    window.open(data.init_point, '_blank');
+    document.getElementById('payment-verifying').classList.remove('hidden');
+    btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 spinner"></i> Aguardando pagamento…';
+    lucide.createIcons();
+    startStatusPolling();
+  } catch (e) {
+    toast('Erro ao iniciar pagamento: ' + (e.message || e), 'error');
+    btn.classList.remove('opacity-50', 'pointer-events-none');
+    btn.innerHTML = '<i data-lucide="credit-card" class="w-4 h-4"></i> Adquirir Licença';
+    lucide.createIcons();
+  }
 }
 
 /* ─── POLLING DE STATUS ───────────────────────── */
@@ -1805,8 +1816,8 @@ function renderAdminUsers(filter) {
   list.innerHTML = users.map(u => `
     <div class="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex items-center justify-between gap-3">
       <div class="min-w-0">
-        <div class="text-sm font-bold text-slate-700 dark:text-slate-200 truncate">${u.nome || '—'}</div>
-        <div class="text-[11px] text-slate-400 mt-0.5">${u.cnpj || 'CNPJ não informado'} · ${REGIME_LABEL[u.regime] || u.regime || '—'}</div>
+        <div class="text-sm font-bold text-slate-700 dark:text-slate-200 truncate">${escapeHtml(u.nome) || '—'}</div>
+        <div class="text-[11px] text-slate-400 mt-0.5">${escapeHtml(u.cnpj) || 'CNPJ não informado'} · ${escapeHtml(REGIME_LABEL[u.regime] || u.regime) || '—'}</div>
         <div class="mt-1.5 flex items-center gap-2 flex-wrap">
           <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${STATUS_STYLE[u.status] || ''}">${STATUS_LABEL[u.status] || u.status}</span>
           <span class="text-[10px] text-slate-400">${new Date(u.created_at).toLocaleDateString('pt-BR')}</span>
@@ -2152,7 +2163,7 @@ function renderProducts() {
     tr.className = 'product-row transition-colors';
     tr.innerHTML = `
       <td class="px-3 py-2.5 font-medium text-slate-700 dark:text-slate-200 max-w-[160px]">
-        <div class="truncate" title="${p.descricao}">${p.descricao}</div>
+        <div class="truncate" title="${escapeHtml(p.descricao)}">${escapeHtml(p.descricao)}</div>
         ${fiscal ? `<div class="text-[9px] text-slate-400 mt-0.5">${fiscal.cat}</div>` : ''}
       </td>
       <td class="px-3 py-2.5 text-center">
@@ -2298,7 +2309,7 @@ function printReport() {
     const bg = i % 2 === 0 ? '#fff' : '#f8fafc';
     tbody.innerHTML += `
       <tr style="background:${bg};">
-        <td style="border:1px solid #e2e8f0;padding:6px 8px;max-width:200px;">${p.descricao}</td>
+        <td style="border:1px solid #e2e8f0;padding:6px 8px;max-width:200px;">${escapeHtml(p.descricao)}</td>
         <td style="border:1px solid #e2e8f0;padding:6px 8px;text-align:center;font-family:monospace;">${p.ncm}</td>
         <td style="border:1px solid #e2e8f0;padding:6px 8px;text-align:right;">${fmtBRL(p.vUnCom)}</td>
         <td style="border:1px solid #e2e8f0;padding:6px 8px;text-align:right;">${fmtBRL(custoEf)}</td>
@@ -2347,6 +2358,10 @@ function toggleTheme() {
 ════════════════════════════════════════════════ */
 function fmtBRL(n) {
   return (n||0).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+}
+// Escapa HTML para evitar XSS ao injetar dados vindos do XML (fornecedor) ou de cadastro em innerHTML.
+function escapeHtml(v) {
+  return String(v ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 }
 function fmtNum(n) {
   return (n||0).toLocaleString('pt-BR');
@@ -2767,7 +2782,7 @@ function renderSidebar() {
     div.className = 'prod-sidebar-item' + (i === selectedProductIdx ? ' selected' : '');
     div.onclick = () => { selectedProductIdx = i; renderSidebar(); };
     div.innerHTML = `
-      <div class="text-xs font-bold text-slate-700 dark:text-slate-200 truncate" title="${p.descricao}">${p.descricao}</div>
+      <div class="text-xs font-bold text-slate-700 dark:text-slate-200 truncate" title="${escapeHtml(p.descricao)}">${escapeHtml(p.descricao)}</div>
       <div class="flex items-center justify-between mt-1">
         <span class="text-[10px] text-slate-400 font-mono">${p.ncm}</span>
         <span class="text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400">${fmtBRL(preco)}</span>
@@ -2871,7 +2886,7 @@ function renderSidebarDetail(alq, defaultMargem, defaultFrete, icmsE) {
     <!-- HEADER -->
     <div class="flex items-start justify-between gap-2">
       <div>
-        <h3 class="text-sm font-extrabold text-slate-800 dark:text-white leading-tight">${p.descricao}</h3>
+        <h3 class="text-sm font-extrabold text-slate-800 dark:text-white leading-tight">${escapeHtml(p.descricao)}</h3>
         <div class="flex flex-wrap gap-1.5 mt-1 text-[10px] text-slate-400 items-center">
           <span class="font-mono">NCM ${p.ncm}</span>
           <span>Qtd: <strong>${p.qCom}</strong></span>
