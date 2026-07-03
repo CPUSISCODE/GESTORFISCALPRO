@@ -2840,6 +2840,8 @@ function openCalcLog(i) {
   const p = produtos[i];
   if (!p) return;
   const { cmv, alq, regime } = getPricingContext(p);
+  const anexo = empresaData.sn_anexo || 'I';
+  const rba   = empresaData.sn_rba || 360000;
   const freteGlobal = parseFloat(document.getElementById('cfg-frete')?.value)  || 0;
   const icmsE       = parseFloat(document.getElementById('cfg-icms-entrada')?.value) || 12;
   const desconto       = p.desconto ?? 0;
@@ -2853,50 +2855,105 @@ function openCalcLog(i) {
   const ipiVal         = p.vUnCom * ipi / 100;
   const stVal          = p.vUnCom * stAliq / 100;
   const custoBase      = p.vUnCom - desconto - desonerado + freteR + outras + icmsVal + ipiVal + stVal;
-  const temConv        = p.convQty && p.convQty > 0;
+  const temConv        = !!(p.convQty && p.convQty > 0);
   const margem         = p.margemCustom ?? (parseFloat(document.getElementById('cfg-margem')?.value) || 30);
   const despPct        = despesasTotalPct || 0;
   const preco          = p.ajuste || calcPreco(cmv, alq, margem);
 
+  // ── helpers de explicação (de onde veio cada número) ──
+  const nDig = String(p.ncm || '').replace(/\D/g, '');
+  const pos4 = nDig.slice(0, 4), cap2 = nDig.slice(0, 2);
+  const ipiPadrao = getIpiFromNcm(p.ncm);
+  let ipiSrc;
+  if (p.ipi != null && p.ipi !== ipiPadrao) ipiSrc = `editado manualmente (TIPI sugeria ${ipiPadrao}%)`;
+  else if (TIPI_NCM[pos4] !== undefined)   ipiSrc = `TIPI: posição ${pos4} = ${TIPI_NCM[pos4]}%`;
+  else if (TIPI_CAP[cap2] !== undefined)   ipiSrc = `TIPI: capítulo ${cap2} = ${TIPI_CAP[cap2]}%`;
+  else                                     ipiSrc = `NCM não classificado na TIPI → 0%`;
+
+  const icmsSrc = p.icmsEntradaPct != null
+    ? 'lido da nota (pICMS/vICMS do item)'
+    : `padrão da config (${icmsE}%) — a nota não trouxe pICMS/vICMS legível`;
+
+  const cestInfo = p.cestFonte === 'xml'       ? `, CEST ${p.cestResolvido} (da nota)`
+                 : p.cestFonte === 'normativa' ? `, CEST ${p.cestResolvido} (consultado na normativa do AC)`
+                 : '';
+  const inter = p.icmsEntradaAliquotaInterestadual;
+  const tipo  = p.icmsEntradaTipo || 'nenhum';
+  let stSrc;
+  if (p.icmsEntradaAliquotaOverride != null) stSrc = 'alíquota editada manualmente';
+  else if (tipo === 'ST')          stSrc = `ST — NCM ${pos4} consta na tabela do Acre (IN DIAT 1/2023); alíquota p/ origem interestadual ${inter}%${cestInfo}`;
+  else if (tipo === 'antecipacao') stSrc = `Antecipação parcial = alíq. interna AC (${ICMS_AC_ALIQUOTA_INTERNA}%) − interestadual (${inter}%)${cestInfo}`;
+  else                             stSrc = 'sem ST/antecipação (operação interna, NCM sem CEST, ou isento)';
+
+  const desonSrc = desonerado > 0
+    ? `benefício Suframa/ZFM — tag vICMSDeson da nota${p.motDesICMS ? ` (motivo ${p.motDesICMS})` : ''}`
+    : 'nota sem ICMS desonerado';
+  const freteSrc = p.freteXml > 0 ? 'rateado do frete total da nota (vFrete)' : 'informado manualmente (ou 0)';
+  const descSrc  = desconto > 0 ? 'tag vDesc do item na nota' : 'sem desconto na nota';
+  const outrasSrc= outras > 0 ? 'tag vOutro do item na nota' : 'sem outras despesas na nota';
+
+  let alqSrc;
+  if (regime === 'SN')      alqSrc = `Simples Nacional, Anexo ${anexo}, RBT12 R$ ${fmtNum(rba)} → alíquota efetiva da faixa`;
+  else if (regime === 'LP') alqSrc = 'Lucro Presumido (PIS 0,65% + COFINS 3% + ICMS 17% + IRPJ/CSLL presumidos)';
+  else if (regime === 'LR') alqSrc = 'Lucro Real (PIS 1,65% + COFINS 7,6% + ICMS 17%)';
+  else                      alqSrc = 'MEI — DAS fixo mensal, 0% sobre a venda';
+
+  const margemSrc = p.lucroDesejadoValor
+    ? `definida pelo "Lucro Líquido Desejado" (${p.lucroDesejadoMode === 'rs' ? 'R$ ' : ''}${p.lucroDesejadoValor}${p.lucroDesejadoMode === 'rs' ? '' : '%'})`
+    : (p.margemCustom != null ? 'margem personalizada deste item' : 'margem padrão das configurações');
+
   const L = (n) => fmtBRL(n);
+  const ex = (txt) => `        ↳ ${txt}`; // linha de explicação recuada
   const linhas = [];
   linhas.push('════════ MEMÓRIA DE CÁLCULO ════════');
   linhas.push(`Produto: ${p.descricao}`);
   linhas.push(`NCM: ${p.ncm}  ·  Regime: ${regime}  ·  Qtd nota: ${p.qCom}`);
+  linhas.push(`Fornecedor UF: ${p.ufOrigem || '—'}${Number(p.origCodigo) ? '  ·  item IMPORTADO (orig ' + p.origCodigo + ')' : ''}`);
   linhas.push('');
   linhas.push('① CUSTO BASE (por unidade da nota)');
   linhas.push(`   Valor de Compra .............. ${L(p.vUnCom)}`);
+  linhas.push(ex('tag vUnCom do item na nota'));
   linhas.push(`   (-) Desconto ................. ${L(desconto)}`);
+  linhas.push(ex(descSrc));
   linhas.push(`   (-) ICMS Desonerado (Suframa)  ${L(desonerado)}`);
+  linhas.push(ex(desonSrc));
   linhas.push(`   (+) Frete de entrada ......... ${L(freteR)}`);
+  linhas.push(ex(freteSrc));
   linhas.push(`   (+) Outras despesas .......... ${L(outras)}`);
+  linhas.push(ex(outrasSrc));
   linhas.push(`   (+) ICMS entrada (${icms.toFixed(2)}%) ...... ${L(icmsVal)}`);
+  linhas.push(ex(icmsSrc));
   linhas.push(`   (+) IPI (${ipi.toFixed(2)}%) ............... ${L(ipiVal)}`);
+  linhas.push(ex(ipiSrc));
   linhas.push(`   (+) ICMS-ST/Antecip. (${stAliq.toFixed(2)}%) . ${L(stVal)}`);
+  linhas.push(ex(stSrc));
   linhas.push(`   ──────────────────────────────`);
   linhas.push(`   (=) Custo Base ............... ${L(custoBase)}`);
+  linhas.push(ex('= Compra − Desconto − Desonerado + Frete + Outras + ICMS + IPI + ST'));
   if (temConv) {
     linhas.push('');
     linhas.push('② FATOR DE CONVERSÃO / FRACIONAMENTO');
     linhas.push(`   ${p.convOp === 'div' ? 'Dividir' : 'Multiplicar'} por ${p.convQty}`);
+    linhas.push(ex('define o custo por unidade de venda a partir da embalagem fechada'));
     linhas.push(`   ${L(custoBase)} ${p.convOp === 'div' ? '÷' : '×'} ${p.convQty} = ${L(cmv)}`);
     linhas.push(`   (=) CMV por unidade de venda . ${L(cmv)}`);
   } else {
     linhas.push(`   (=) CMV (sem fracionamento) .. ${L(cmv)}`);
+    linhas.push(ex('nenhum fator de conversão aplicado (1 un. da nota = 1 un. de venda)'));
   }
   linhas.push('');
   linhas.push('③ PREÇO DE VENDA');
   linhas.push(`   Fórmula: Preço = CMV ÷ (1 − alíquota − margem% − despesas%)`);
   linhas.push(`   CMV .......................... ${L(cmv)}`);
   linhas.push(`   Alíquota do regime ........... ${(alq*100).toFixed(2)}%`);
+  linhas.push(ex(alqSrc));
   linhas.push(`   Margem (lucro sobre venda) ... ${margem.toFixed(2)}%`);
+  linhas.push(ex(margemSrc));
   linhas.push(`   Despesas operacionais ........ ${despPct.toFixed(2)}%`);
+  linhas.push(ex('soma das despesas da aba "Despesas" ÷ faturamento informado'));
   linhas.push(`   ──────────────────────────────`);
   linhas.push(`   (=) Preço de Venda Sugerido .. ${L(preco)}`);
-  if (p.lucroDesejadoValor) {
-    linhas.push('');
-    linhas.push(`   ⓘ Lucro líquido desejado informado: ${p.lucroDesejadoMode === 'rs' ? L(parseFloat(String(p.lucroDesejadoValor).replace(',','.'))||0) : (parseFloat(String(p.lucroDesejadoValor).replace(',','.'))||0)+'%'}`);
-  }
+  if (p.ajuste) linhas.push(ex(`preço fixado manualmente (ignora a fórmula): ${L(p.ajuste)}`));
 
   document.getElementById('calc-log-content').textContent = linhas.join('\n');
   document.getElementById('modal-calc-log').classList.remove('hidden');
