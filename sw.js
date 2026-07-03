@@ -1,56 +1,44 @@
-const CACHE_NAME = 'gestorfiscal-v1';
-const ASSETS = [
+const CACHE_NAME = 'gestorfiscal-v2';
+// Precache apenas arquivos do próprio site. As dependências de CDN são cacheadas
+// em tempo de execução pelo handler de fetch (addAll falha se qualquer URL externa recusar).
+const CORE_ASSETS = [
   'index.html',
   'manifest.json',
-  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js',
-  'https://cdn.tailwindcss.com',
-  'https://unpkg.com/lucide@latest',
-  'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap'
+  'icons/icon-192.png',
+  'icons/icon-512.png'
 ];
 
-// Instalação do PWA e Cache de dependências básicas
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS);
-    }).then(() => self.skipWaiting())
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(CORE_ASSETS))
+      .then(() => self.skipWaiting())
+      .catch(() => self.skipWaiting())
   );
 });
 
-// Ativação e limpeza de caches antigos
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
-        keys.map((key) => {
-          if (key !== CACHE_NAME) {
-            return caches.delete(key);
-          }
-        })
-      );
-    }).then(() => self.clients.claim())
+    caches.keys()
+      .then((keys) => Promise.all(keys.map((k) => (k !== CACHE_NAME ? caches.delete(k) : null))))
+      .then(() => self.clients.claim())
   );
 });
 
-// Estratégia de Cache: Tenta a rede, se falhar ou estiver offline, busca no Cache
+// Rede primeiro; se falhar (offline), cai para o cache.
 self.addEventListener('fetch', (event) => {
-  // Ignora chamadas externas de POST ou Supabase de autenticação no cache
-  if (event.request.method !== 'GET' || event.request.url.includes('supabase.co')) {
-    return;
-  }
+  // Nunca cacheia chamadas ao Supabase (auth/banco/edge functions) nem métodos != GET.
+  if (event.request.method !== 'GET' || event.request.url.includes('supabase.co')) return;
 
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Se a resposta for válida, clona e guarda no cache atualizado
-        if (response.status === 200) {
-          const resClone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, resClone);
-          });
+        if (response && response.status === 200) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone)).catch(() => {});
         }
         return response;
       })
-      .catch(() => caches.match(event.request)) // Offline fallback
+      .catch(() => caches.match(event.request))
   );
 });
