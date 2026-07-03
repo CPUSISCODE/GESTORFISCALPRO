@@ -25,12 +25,21 @@ const MP_ACCESS_TOKEN      = Deno.env.get('MP_ACCESS_TOKEN') ?? '';
 // Mantenha igual à constante MP_PRECO_MENSAL do GESTORFISCAL.html
 const MP_PRECO_MENSAL = 100;
 
+// CORS: necessário porque a função é chamada pelo navegador (sb.functions.invoke),
+// que envia um preflight OPTIONS antes do POST.
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
 Deno.serve(async (req: Request) => {
-  if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 });
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
+  if (req.method !== 'POST') return new Response('Method not allowed', { status: 405, headers: CORS });
 
   if (!MP_ACCESS_TOKEN) {
     return new Response(JSON.stringify({ error: 'MP_ACCESS_TOKEN não configurado no servidor. Contate o administrador.' }), {
-      status: 500, headers: { 'Content-Type': 'application/json' },
+      status: 500, headers: { ...CORS, 'Content-Type': 'application/json' },
     });
   }
 
@@ -38,12 +47,12 @@ Deno.serve(async (req: Request) => {
   // do JWT antes de invocar esta function, pois verify_jwt = true no deploy).
   const authHeader = req.headers.get('Authorization') ?? '';
   const jwt = authHeader.replace(/^Bearer\s+/i, '');
-  if (!jwt) return new Response(JSON.stringify({ error: 'Não autenticado.' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+  if (!jwt) return new Response(JSON.stringify({ error: 'Não autenticado.' }), { status: 401, headers: { ...CORS, 'Content-Type': 'application/json' } });
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
   const { data: userData, error: userErr } = await supabase.auth.getUser(jwt);
   if (userErr || !userData?.user) {
-    return new Response(JSON.stringify({ error: 'Sessão inválida.' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ error: 'Sessão inválida.' }), { status: 401, headers: { ...CORS, 'Content-Type': 'application/json' } });
   }
   const user = userData.user;
 
@@ -80,7 +89,7 @@ Deno.serve(async (req: Request) => {
   if (!mpRes.ok) {
     console.error('Erro ao criar preapproval no Mercado Pago:', mpData);
     return new Response(JSON.stringify({ error: mpData?.message || 'Erro ao criar assinatura no Mercado Pago.' }), {
-      status: 502, headers: { 'Content-Type': 'application/json' },
+      status: 502, headers: { ...CORS, 'Content-Type': 'application/json' },
     });
   }
 
@@ -89,6 +98,6 @@ Deno.serve(async (req: Request) => {
   await supabase.from('empresas').update({ payment_ref: mpData.id }).eq('user_id', user.id);
 
   return new Response(JSON.stringify({ init_point: mpData.init_point }), {
-    headers: { 'Content-Type': 'application/json' },
+    headers: { ...CORS, 'Content-Type': 'application/json' },
   });
 });

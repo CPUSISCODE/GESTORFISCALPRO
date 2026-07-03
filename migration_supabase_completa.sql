@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS empresas (
   sn_rba             NUMERIC DEFAULT 360000,
   drive_url          TEXT,
   telefone           TEXT,
-  status             TEXT NOT NULL DEFAULT 'pending_payment'
+  status             TEXT NOT NULL DEFAULT 'pending'
                        CHECK (status IN ('pending','pending_payment','active')),
   plano              TEXT,
   payment_ref        TEXT, -- id da assinatura/pagamento no Mercado Pago (preapproval_id / payment_id)
@@ -93,7 +93,7 @@ BEGIN
 
   IF TG_OP = 'INSERT' THEN
     IF NOT is_privileged THEN
-      NEW.status       := 'pending_payment';
+      NEW.status       := 'pending'; -- novo cadastro aguarda aprovação do admin
       NEW.plano        := NULL;
       NEW.payment_ref  := NULL;
       NEW.activated_at := NULL;

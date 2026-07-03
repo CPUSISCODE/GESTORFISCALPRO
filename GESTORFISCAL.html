@@ -1762,27 +1762,31 @@ async function doSignup() {
     const { data, error } = await sb.auth.signUp({ email, password: pass, options: { data: { nome: name } } });
     if (error) throw error;
 
-    const uid = data.user?.id;
-    if (uid) {
-      await sb.from('empresas').insert({
-        user_id: uid, nome: empresa, cnpj, uf, cidade, telefone,
-        regime: signupRegime, sn_anexo: snAnexo, sn_rba: snRba
-      });
-    }
-
     setBtnLoading('btn-signup', 'icon-signup', 'label-signup', false);
 
     const leadData = { nome: name, email, empresa, telefone, cnpj, uf, cidade, regime: signupRegime, snAnexo, snRba };
-
-    // WhatsApp webhook (não bloqueia o fluxo)
+    // Notifica o admin do novo lead (não bloqueia o fluxo)
     sendWhatsAppLead(leadData);
 
-    // Mostrar modal de boas-vindas
-    mostrarModalPosCadastro(leadData);
+    const uid = data.user?.id;
 
-    // Login imediato
-    const { data: d2, error: e2 } = await sb.auth.signInWithPassword({ email, password: pass });
-    if (!e2 && d2?.user) await afterLogin(d2.user);
+    if (data.session) {
+      // Confirmação de e-mail DESLIGADA → já veio sessão ativa.
+      // Cria a empresa (status 'pending' via trigger) e leva à tela de "aguardando ativação".
+      if (uid) {
+        await sb.from('empresas').insert({
+          user_id: uid, nome: empresa, cnpj, uf, cidade, telefone,
+          regime: signupRegime, sn_anexo: snAnexo, sn_rba: snRba
+        }).catch(() => {});
+      }
+      mostrarModalPosCadastro(leadData);
+      await afterLogin(data.user); // roteia para a tela "Conta em análise" (admin libera)
+    } else {
+      // Confirmação de e-mail LIGADA → não há sessão ainda; não dá para gravar a empresa
+      // nem entrar. Orienta o usuário. (Recomendado: desligar "Confirm email" no Supabase.)
+      mostrarModalPosCadastro(leadData);
+      toast('Conta criada! Confirme seu e-mail e depois faça login — o administrador liberará seu acesso.', 'info');
+    }
   } catch(e) {
     setBtnLoading('btn-signup', 'icon-signup', 'label-signup', false);
     toast(translateAuthError(e.message || String(e)), 'error');
@@ -1820,13 +1824,16 @@ function routeByStatus() {
   // Admins sempre vão direto pro app
   if (isAdmin) { loadApp(false); return; }
 
-  const status = empresaData.status || 'pending_payment';
+  const status = empresaData.status || 'pending';
   hideAllScreens();
   if (status === 'active') {
     loadApp(false);
-  } else {
-    // pending ou pending_payment → vai direto para pagamento
+  } else if (status === 'pending_payment') {
+    // fluxo de pagamento (Mercado Pago) — usado quando a cobrança estiver ativa
     showPaymentScreen();
+  } else {
+    // 'pending' → aguardando o admin liberar o acesso
+    showPendingScreen();
   }
 }
 
